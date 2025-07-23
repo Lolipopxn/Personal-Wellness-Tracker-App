@@ -6,7 +6,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Home'), backgroundColor: Colors.lightGreen,),
+      appBar: AppBar(title: Text('Home'), backgroundColor: Colors.lightGreen),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -24,6 +24,12 @@ class HomePage extends StatelessWidget {
                 Navigator.pushNamed(context, '/profile');
               },
               child: Text('ไปที่หน้า profile'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/register');
+              },
+              child: Text('ไปที่หน้า register'),
             ),
           ],
         ),
