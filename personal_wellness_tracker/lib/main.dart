@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_wellness_tracker/pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home.dart';
 import 'pages/login.dart';
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => HomePage(),
-        '/login': (context) => Login(),
+        '/login': (context) => LoginPage(),
         '/profile': (context) => Profile(),
         '/register': (context) => RegisterPage(),
       },
