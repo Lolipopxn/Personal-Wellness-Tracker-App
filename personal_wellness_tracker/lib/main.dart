@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:personal_wellness_tracker/pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home.dart';
-import 'pages/login.dart';
 import 'pages/profile.dart';
+import 'pages/dashboard.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -28,6 +28,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/profile': (context) => Profile(),
         '/register': (context) => RegisterPage(),
+        '/dashboard': (context) => Dashboard(),
       },
     );
   }

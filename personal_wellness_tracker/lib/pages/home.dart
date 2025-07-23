@@ -13,23 +13,29 @@ class HomePage extends StatelessWidget {
           children: [
             Text('นี่คือหน้า Home'),
             SizedBox(height: 20),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/login');
               },
               child: Text('ไปที่หน้า login'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/profile');
               },
               child: Text('ไปที่หน้า profile'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/register');
               },
               child: Text('ไปที่หน้า register'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/dashboard');
+              },
+              child: Text('ไปที่หน้า Dashboad'),
             ),
           ],
         ),
