@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_wellness_tracker/app/auth_service.dart';
 import 'package:personal_wellness_tracker/pages/profile_widget.dart';
+import 'package:personal_wellness_tracker/pages/register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,7 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void signIn() async {
-    // แสดง loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -60,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 1. ไม่มี AppBar
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -199,14 +198,19 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // 7. "Have an Account?" Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("Have an Account? "),
                       GestureDetector(
                         onTap: () {
-                          // TODO: Navigate to Register Page
+                          // เมื่อกดที่นี่
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
+                            ),
+                          );
                         },
                         child: const Text(
                           'Register',
