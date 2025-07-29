@@ -37,6 +37,12 @@ class HomePage extends StatelessWidget {
               },
               child: Text('ไปที่หน้า Dashboad'),
             ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/food_save');
+              },
+              child: Text('ไปที่หน้า Food Save'),
+            ),
           ],
         ),
       ),

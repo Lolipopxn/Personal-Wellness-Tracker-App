@@ -1,24 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
-void main() {
-  runApp(const Profile());
-}
+import 'package:flutter/cupertino.dart';
 
 class Profile extends StatelessWidget {
   const Profile({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'User Registration',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const RegistrationScreen(),
-    );
+    return RegistrationScreen();
   }
 }
 
@@ -30,6 +20,8 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  // For water goal cup selection UI
+  int _selectedWaterCups = 0;
   // Controllers for text fields
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
@@ -216,21 +208,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  IconData? genderIcon(String gender) {
+    switch (gender) {
+      case 'Male':
+        return Icons.male;
+      case 'Female':
+        return Icons.female;
+      case 'Other':
+        return Icons.transgender;
+      default:
+        return null;
+    }
+  }
+
   // Helper to build dropdown form fields
   Widget _buildDropdownField(String label, List<String> options, String? selectedValue, ValueChanged<String?> onChanged) {
-    IconData? _genderIcon(String gender) {
-      switch (gender) {
-        case 'Male':
-          return Icons.male;
-        case 'Female':
-          return Icons.female;
-        case 'Other':
-          return Icons.transgender;
-        default:
-          return null;
-      }
-    }
-
     return DropdownButtonFormField<String>(
       value: selectedValue,
       decoration: InputDecoration(
@@ -245,7 +237,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           value: value,
           child: Row(
             children: [
-              Icon(_genderIcon(value), color: Colors.green),
+              Icon(genderIcon(value), color: Colors.green),
               const SizedBox(width: 8),
               Text(value),
             ],
@@ -277,7 +269,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     width: 2,
                   ),
                   boxShadow: isActiveStep
-                      ? [BoxShadow(color: Colors.green.withOpacity(0.2), blurRadius: 8, spreadRadius: 1)]
+                      ? [
+                          BoxShadow(
+                            color: const Color.fromARGB(51, 76, 175, 80), // 0.2 opacity green
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          )
+                        ]
                       : [],
                 ),
                 child: Center(
@@ -460,17 +458,202 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const Icon(Icons.timer, color: Colors.green),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _buildTextField('การออกกำลังกาย (นาที/วัน)', _goalExerciseMinutesController, TextInputType.number),
+                          child: GestureDetector(
+                            onTap: () async {
+                              int initial = int.tryParse(_goalExerciseMinutesController.text) ?? 30;
+                              int tempValue = initial;
+                              FixedExtentScrollController scrollController = FixedExtentScrollController(initialItem: (initial/5).clamp(0, 59).toInt());
+                              final selected = await showDialog<int>(
+                                context: context,
+                                barrierDismissible: true,
+                                builder: (context) {
+                                  return StatefulBuilder(
+                                    builder: (context, setStateDialog) {
+                                      return Dialog(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Padding(
+                                                padding: EdgeInsets.only(bottom: 4),
+                                                child: Text('เลือกจำนวนนาที/วัน', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 21, color: Colors.blue)),
+                                              ),
+                                              SizedBox( 
+                                                height: 180,
+                                                child: CupertinoPicker(
+                                                  scrollController: scrollController,
+                                                  itemExtent: 36,
+                                                  magnification: 1.15,
+                                                  useMagnifier: true,
+                                                  squeeze: 1.1,
+                                                  onSelectedItemChanged: (idx) {
+                                                    setStateDialog(() {
+                                                      tempValue = (idx+1)*5;
+                                                    });
+                                                  },
+                                                  selectionOverlay: Container(
+                                                    decoration: BoxDecoration(
+                                                      border: Border(
+                                                        top: BorderSide(color: Colors.blue.withOpacity(0.18), width: 1),
+                                                        bottom: BorderSide(color: Colors.blue.withOpacity(0.18), width: 1),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  children: List.generate(60, (i) => Center(
+                                                    child: AnimatedDefaultTextStyle(
+                                                      duration: const Duration(milliseconds: 120),
+                                                      curve: Curves.easeInOut,
+                                                      style: TextStyle(
+                                                        fontSize: tempValue == (i+1)*5 ? 26 : 16,
+                                                        fontWeight: tempValue == (i+1)*5 ? FontWeight.bold : FontWeight.normal,
+                                                        color: tempValue == (i+1)*5 ? Colors.blue : Colors.grey[600],
+                                                      ),
+                                                      child: Text('${(i+1)*5} นาที'),
+                                                    ),
+                                                  )),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+                                                child: SizedBox(
+                                                  width: double.infinity,
+                                                  child: ElevatedButton(
+                                                    onPressed: () {
+                                                      Navigator.of(context).pop(tempValue);
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: Colors.blue,
+                                                      foregroundColor: Colors.white,
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                                      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                                      elevation: 0,
+                                                    ),
+                                                    child: const Text('ยืนยัน'),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                              if (selected != null) {
+                                setState(() {
+                                  _goalExerciseMinutesController.text = selected.toString();
+                                });
+                              }
+                            },
+                            child: AbsorbPointer(
+                              child: TextField(
+                                controller: _goalExerciseMinutesController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'การออกกำลังกาย (นาที/วัน)',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  suffixIcon: const Icon(Icons.arrow_drop_down),
+                                ),
+                                readOnly: true,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 18),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(Icons.local_drink, color: Colors.green),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _buildTextField('เป้าหมายการดื่มน้ำ (แก้ว/วัน)', _goalWaterController, TextInputType.number),
+                          child: GestureDetector(
+                            onTap: () async {
+                              final selected = await showDialog<int>(
+                                context: context,
+                                builder: (context) {
+                                  return Dialog(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Padding(
+                                            padding: EdgeInsets.only(left: 8, bottom: 8),
+                                            child: Text('เลือกจำนวนแก้วน้ำ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
+                                          ),
+                                          Wrap(
+                                            spacing: 10,
+                                            runSpacing: 10,
+                                            children: List.generate(12, (i) {
+                                              final cupNum = i + 1;
+                                              final isSelected = _selectedWaterCups == cupNum;
+                                              return GestureDetector(
+                                                onTap: () {
+                                                  Navigator.of(context).pop(cupNum);
+                                                },
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 180),
+                                                  curve: Curves.easeInOut,
+                                                  padding: const EdgeInsets.all(6),
+                                                  decoration: BoxDecoration(
+                                                    color: isSelected ? Colors.blue[100] : Colors.transparent,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(
+                                                      color: isSelected ? Colors.blue : Colors.grey[300]!,
+                                                      width: isSelected ? 2 : 1,
+                                                    ),
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.local_drink,
+                                                          size: 36,
+                                                          color: isSelected ? Colors.blue : Colors.grey[400]),
+                                                      Text('$cupNum', style: TextStyle(
+                                                        color: isSelected ? Colors.blue : Colors.grey[600],
+                                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                      )),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            }),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                              if (selected != null) {
+                                setState(() {
+                                  _selectedWaterCups = selected;
+                                  _goalWaterController.text = selected.toString();
+                                });
+                              }
+                            },
+                            child: AbsorbPointer(
+                              child: TextField(
+                                controller: _goalWaterController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'เป้าหมายการดื่มน้ำ (แก้ว/วัน)',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  suffixIcon: const Icon(Icons.arrow_drop_down),
+                                ),
+                                readOnly: true,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
