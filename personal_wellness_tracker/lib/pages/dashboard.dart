@@ -11,11 +11,12 @@ class Dashboard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Column(
-        children: <Widget>[
+        children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[200], // Background for the icon
+              color: const Color.fromARGB(255, 255, 255, 255),
+              border: Border.all(color: Colors.grey, width: 1), // Background for the icon
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 40, color: Colors.blue),
@@ -44,7 +45,7 @@ class Dashboard extends StatelessWidget {
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start, // Align text to start
-      children: <Widget>[
+      children: [
         Text(label, style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 4),
         Text(
@@ -107,13 +108,13 @@ class Dashboard extends StatelessWidget {
         padding: const EdgeInsets.all(30),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
+          children: [
             // Image Placeholder Section
             Container(
               height: 150,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey[300], // Placeholder color
+                color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
@@ -129,7 +130,7 @@ class Dashboard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Row(
-              children: <Widget>[
+              children: [
                 Expanded(
                   child: LinearProgressIndicator(
                     value: 7 / 14, // Example: 7 out of 14 days
@@ -210,7 +211,14 @@ class Dashboard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Wrap(
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey, width: 1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Wrap(
                     spacing: 20.0, // Horizontal space between items
                     runSpacing: 15.0, // Vertical space between lines
                     alignment: WrapAlignment.start, // Align items to the start
@@ -262,6 +270,8 @@ class Dashboard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  ),
+                  
                   const SizedBox(height: 20),
                   Row(
                       mainAxisAlignment: MainAxisAlignment.start, // Center the text

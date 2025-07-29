@@ -5,6 +5,7 @@ import 'pages/register_page.dart';
 import 'pages/home.dart';
 import 'pages/profile.dart';
 import 'pages/dashboard.dart';
+import 'pages/daily_page.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -22,7 +23,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Multi Page App',
-      theme: ThemeData(primarySwatch: Colors.teal),
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: Colors.white,
+      ),
       initialRoute: '/',
       routes: {
         '/': (context) => HomePage(),
@@ -31,6 +35,7 @@ class MyApp extends StatelessWidget {
         '/register': (context) => RegisterPage(),
         '/dashboard': (context) => Dashboard(),
         '/food_save': (context) => FoodSavePage(),
+        '/daily': (context) => DailyPage(),
       },
     );
   }

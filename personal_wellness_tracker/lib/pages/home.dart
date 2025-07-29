@@ -43,6 +43,12 @@ class HomePage extends StatelessWidget {
               },
               child: Text('ไปที่หน้า Food Save'),
             ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/daily');
+              },
+              child: Text('ไปที่หน้า Daily Page'),
+            ),
           ],
         ),
       ),
