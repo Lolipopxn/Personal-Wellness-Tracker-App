@@ -7,45 +7,43 @@ class Dashboard extends StatelessWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    required bool isTablet,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
-        children: [
+        children: <Widget>[
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 255, 255, 255),
-              border: Border.all(color: Colors.grey, width: 1), // Background for the icon
+              color: Colors.grey[200],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 40, color: Colors.blue),
+            child: Icon(icon, size: isTablet ? 50 : 40, color: Colors.blue),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
+            style: TextStyle(
+              fontSize: isTablet ? 14 : 12,
               color: Colors.black87,
-            ), // Added style for consistency
+            ),
           ),
         ],
       ),
     );
   }
 
-  // New helper widget to build a health metric item
   Widget _buildHealthMetricItem({
     required String label,
     required String value,
-    required Color color, // Default icon color
-    Color labelColor = Colors.grey, // Default label color
-    // Color valueColor = Colors.black87,
+    required Color color,
+    Color labelColor = Colors.grey,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start, // Align text to start
-      children: [
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
         Text(label, style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 4),
         Text(
@@ -62,10 +60,13 @@ class Dashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        elevation: 0, // No shadow
+        elevation: 0,
         title: Row(
           children: <Widget>[
             IconButton(
@@ -74,13 +75,11 @@ class Dashboard extends StatelessWidget {
                 size: 30,
                 color: Colors.black54,
               ),
-              onPressed: () {
-                // Handle profile icon tap
-              },
+              onPressed: () {},
             ),
             const SizedBox(width: 8),
             const Text(
-              '6510110165', // Replace with dynamic username
+              '6510110165',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -92,48 +91,47 @@ class Dashboard extends StatelessWidget {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.notifications, color: Colors.black54),
-            onPressed: () {
-              // Handle notifications icon tap
-            },
+            onPressed: () {},
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.black54),
-            onPressed: () {
-              // Handle settings icon tap
-            },
+            onPressed: () {},
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(30),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image Placeholder Section
+          children: <Widget>[
             Container(
-              height: 150,
+              height: isTablet ? 200 : 150,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
-                child: Icon(Icons.image, size: 80, color: Colors.grey[600]),
+                child: Icon(
+                  Icons.image,
+                  size: isTablet ? 100 : 80,
+                  color: Colors.grey[600],
+                ),
               ),
             ),
             const SizedBox(height: 20),
 
-            // Progress Bar Section
+            // Progress Bar
             Text(
-              'บันทึกมาแล้ว (7 วัน)', // "Recorded (7 days)"
+              'บันทึกมาแล้ว (7 วัน)',
               style: TextStyle(fontSize: 14, color: Colors.grey[700]),
             ),
             const SizedBox(height: 8),
             Row(
-              children: [
+              children: <Widget>[
                 Expanded(
                   child: LinearProgressIndicator(
-                    value: 7 / 14, // Example: 7 out of 14 days
+                    value: 7 / 14,
                     backgroundColor: Colors.grey[300],
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Colors.blue,
@@ -144,84 +142,74 @@ class Dashboard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  '14 วัน', // "14 days"
+                  '14 วัน',
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ],
             ),
             const SizedBox(height: 30),
 
-            // Daily Tasks Section
-            const Text(
-              'สิ่งที่ต้องทำประจำวัน', // "Things to do daily"
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            const Center(
+              child: Text(
+                'สิ่งที่ต้องทำประจำวัน',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ),
             const SizedBox(height: 15),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                _buildDailyTaskItem(
-                  icon: Icons.track_changes, // Example icon for tracking
-                  label: 'ติดตามประจำวัน', // "Daily Tracking"
-                  onTap: () {
-                    print('Daily Tracking tapped');
-                  },
-                ),
-                _buildDailyTaskItem(
-                  icon: Icons.fastfood, // Example icon for food
-                  label: 'บันทึกอาหาร', // "Record Food"
-                  onTap: () {
-                    print('Record Food tapped');
-                  },
-                ),
-                _buildDailyTaskItem(
-                  icon: Icons.bar_chart, // Example icon for progress
-                  label: 'ผลความก้าวหน้า', // "Progress Results"
-                  onTap: () {
-                    print('Progress Results tapped');
-                  },
-                ),
-              ],
+            Center(
+              child: Wrap(
+                spacing: 30,
+                runSpacing: 20,
+                alignment: WrapAlignment.center,
+                children: <Widget>[
+                  _buildDailyTaskItem(
+                    icon: Icons.track_changes,
+                    label: 'ติดตามประจำวัน',
+                    onTap: () => print('Daily Tracking tapped'),
+                    isTablet: isTablet,
+                  ),
+                  _buildDailyTaskItem(
+                    icon: Icons.fastfood,
+                    label: 'บันทึกอาหาร',
+                    onTap: () => print('Record Food tapped'),
+                    isTablet: isTablet,
+                  ),
+                  _buildDailyTaskItem(
+                    icon: Icons.bar_chart,
+                    label: 'ผลความก้าวหน้า',
+                    onTap: () => print('Progress Results tapped'),
+                    isTablet: isTablet,
+                  ),
+                ],
+              ),
             ),
-
             const SizedBox(height: 30),
+            const Divider(thickness: 2, color: Colors.grey),
 
-            const Divider(
-              thickness: 2,
-              color: Colors.grey,
-              indent: 1,
-              endIndent: 1, 
-            ),
-            // Daily Health Section (Updated)
-            const Text(
-              "สุขภาพประจำวัน", // "Daily Health"
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            const Center(
+              child: Text(
+                "สุขภาพประจำวัน",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ),
             const SizedBox(height: 15),
             Padding(
-              padding: const EdgeInsets.all( 15),
+              padding: const EdgeInsets.all(15),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey, width: 1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Wrap(
-                    spacing: 20.0, // Horizontal space between items
-                    runSpacing: 15.0, // Vertical space between lines
-                    alignment: WrapAlignment.start, // Align items to the start
+                  Wrap(
+                    spacing: 20.0,
+                    runSpacing: 15.0,
+                    alignment: WrapAlignment.center,
                     children: [
                       _buildHealthMetricItem(
                         label: "ชื่อผู้ใช้",
@@ -270,35 +258,34 @@ class Dashboard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  ),
-                  
                   const SizedBox(height: 20),
                   Row(
-                      mainAxisAlignment: MainAxisAlignment.start, // Center the text
-                      children: [
-                        const Text("ผลการประเมิน: ",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                        Icon(
-                          Icons.check_circle,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "ผลการประเมิน: ",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                           color: Colors.green,
-                          size: 24,
                         ),
-                        const SizedBox(width: 8), // Space between icon and text
-                        const Text(
-                          "สุขภาพดี", // "Healthy"
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
+                      ),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "สุขภาพดี",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
