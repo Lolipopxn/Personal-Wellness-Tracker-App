@@ -8,19 +8,49 @@ import 'pages/dashboard.dart';
 import 'pages/daily_page.dart';
 import 'pages/setting_page.dart';
 
-
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+
+class ThemeProvider with ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  ThemeMode get themeMode => _themeMode;
+
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+  }
+
+  // Load theme preference from SharedPreferences
+  Future<void> loadThemeFromPrefs() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? isDarkMode = prefs.getBool('isDarkMode');
+    if (isDarkMode != null) {
+      _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+    }
+    notifyListeners();
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
-  WidgetsFlutterBinding.ensureInitialized();
+
   await initializeDateFormatting('th');
-  runApp(MyApp());
+
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadThemeFromPrefs(); // Load theme before running the app
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => themeProvider,
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -28,22 +58,45 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Multi Page App',
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => HomePage(),
-        '/login': (context) => LoginPage(),
-        '/profile': (context) => Profile(),
-        '/register': (context) => RegisterPage(),
-        '/dashboard': (context) => Dashboard(),
-        '/food_save': (context) => FoodSavePage(),
-        '/daily': (context) => DailyPage(),
-        '/settings': (context) => SettingsPage(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Multi Page App',
+          theme: ThemeData(
+            useMaterial3: true,
+            scaffoldBackgroundColor: Colors.white,
+            brightness: Brightness.light, // Light theme
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            scaffoldBackgroundColor: Colors.grey[900], // Dark background
+            brightness: Brightness.dark, // Dark theme
+            // Define other dark mode colors here if needed
+            appBarTheme: AppBarTheme(
+              foregroundColor: Colors.white,
+            ),
+            textTheme: TextTheme(
+              bodyMedium: TextStyle(color: Colors.white70),
+              titleMedium: TextStyle(color: Colors.white),
+            ),
+            listTileTheme: ListTileThemeData(
+              iconColor: Colors.white70,
+              textColor: Colors.white70,
+            ),
+          ),
+          themeMode: themeProvider.themeMode, // Use themeMode from ThemeProvider
+          initialRoute: '/',
+          routes: {
+            '/': (context) => HomePage(),
+            '/login': (context) => LoginPage(),
+            '/profile': (context) => Profile(),
+            '/register': (context) => RegisterPage(),
+            '/dashboard': (context) => Dashboard(),
+            '/food_save': (context) => FoodSavePage(),
+            '/daily': (context) => DailyPage(),
+            '/settings': (context) => SettingsPage(),
+          },
+        );
       },
     );
   }
