@@ -49,6 +49,12 @@ class HomePage extends StatelessWidget {
               },
               child: Text('ไปที่หน้า Daily Page'),
             ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/settings');
+              },
+              child: Text('ไปที่หน้า Settings'),
+            ),
           ],
         ),
       ),

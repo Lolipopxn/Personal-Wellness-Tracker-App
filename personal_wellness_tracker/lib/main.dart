@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:personal_wellness_tracker/pages/food_save.dart';
 import 'package:personal_wellness_tracker/pages/login_page.dart';
-import 'package:personal_wellness_tracker/pages/setting_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home.dart';
 import 'pages/profile.dart';
 import 'pages/dashboard.dart';
 import 'pages/daily_page.dart';
+import 'pages/setting_page.dart';
 
 
 import 'package:firebase_core/firebase_core.dart';
