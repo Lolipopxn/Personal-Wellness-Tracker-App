@@ -105,7 +105,7 @@ class _Daily extends State<DailyPage> {
     ).format(DateTime.now());
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 109, 234, 103),
+        backgroundColor: Color(0xFF79D7BE),
         elevation: 0,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -142,6 +142,7 @@ class _Daily extends State<DailyPage> {
       ),
       body: Container(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 30),
+        color: Colors.white,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +151,7 @@ class _Daily extends State<DailyPage> {
             Container(
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Colors.grey.withAlpha(50),
+                color: Color(0xFFF6F4F0),
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
@@ -162,7 +163,11 @@ class _Daily extends State<DailyPage> {
               ),
               child: Text(
                 'วันนี้: $currentDate',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E5077),
+                ),
               ),
             ),
 
@@ -171,12 +176,13 @@ class _Daily extends State<DailyPage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               spacing: 10,
               children: [
+                Icon(Icons.assignment, color: Color(0xFF2E5077), size: 30),
                 Text(
                   "Daily Habit Tracking",
                   style: TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.w900,
-                    color: Colors.green.withAlpha(255),
+                    color: Color(0xFF1FAB89).withAlpha(255),
                     shadows: [
                       Shadow(
                         color: Colors.black.withAlpha(50),
@@ -330,13 +336,13 @@ class _Daily extends State<DailyPage> {
                               isTask1
                                   ? Icons.check_box
                                   : Icons.check_box_outline_blank,
-                              color: isTask1 ? Colors.green : Colors.black,
+                              color: isTask1 ? Colors.green : Colors.red,
                               size: 20,
                             ),
                             Text(
                               "บันทึกการออกกำลังกาย",
                               style: TextStyle(
-                                color: isTask1 ? Colors.green : Colors.black,
+                                color: isTask1 ? Colors.green : Colors.red,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -416,14 +422,14 @@ class _Daily extends State<DailyPage> {
                               isTask2
                                   ? Icons.check_box
                                   : Icons.check_box_outline_blank,
-                              color: isTask2 ? Colors.green : Colors.black,
+                              color: isTask2 ? Colors.green : Colors.red,
                               size: 20,
                             ),
                             SizedBox(width: 10),
                             Text(
                               "บันทึกการดื่มน้ำ",
                               style: TextStyle(
-                                color: isTask2 ? Colors.green : Colors.black,
+                                color: isTask2 ? Colors.green : Colors.red,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -455,14 +461,14 @@ class _Daily extends State<DailyPage> {
                               isTask3
                                   ? Icons.check_box
                                   : Icons.check_box_outline_blank,
-                              color: isTask3 ? Colors.green : Colors.black,
+                              color: isTask3 ? Colors.green : Colors.red,
                               size: 20,
                             ),
                             SizedBox(width: 10),
                             Text(
                               "ติดตามการนอน",
                               style: TextStyle(
-                                color: isTask3 ? Colors.green : Colors.black,
+                                color: isTask3 ? Colors.green : Colors.red,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -497,14 +503,14 @@ class _Daily extends State<DailyPage> {
                             isTask4
                                 ? Icons.check_box
                                 : Icons.check_box_outline_blank,
-                            color: isTask4 ? Colors.green : Colors.black,
+                            color: isTask4 ? Colors.green : Colors.red,
                             size: 20,
                           ),
                           SizedBox(width: 10),
                           Text(
                             "บันทึกอารมณ์วันนี้",
                             style: TextStyle(
-                              color: isTask4 ? Colors.green : Colors.black,
+                              color: isTask4 ? Colors.green : Colors.red,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
@@ -523,9 +529,20 @@ class _Daily extends State<DailyPage> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "กิจกรรมอื่น ๆ",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Row(
+                  spacing: 10,
+                  children: [
+                    Icon(Icons.tag_faces, size: 25, color: Color(0xFF2E5077)),
+                    Text(
+                      "กิจกรรมอื่น ๆ",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1FAB89).withAlpha(255),
+                        
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

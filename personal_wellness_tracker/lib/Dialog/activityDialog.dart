@@ -63,7 +63,7 @@ class _ActivitySectionState extends State<ActivitySection> {
                   onPressed: showAddActivityDialog,
                   style: ButtonStyle(
                     backgroundColor: WidgetStateProperty.all(
-                      Colors.blueAccent.withAlpha(255),
+                      Color(0xFF2E5077).withAlpha(255),
                     ),
                     foregroundColor: WidgetStateProperty.all(Colors.black),
                     shape: WidgetStateProperty.all(
