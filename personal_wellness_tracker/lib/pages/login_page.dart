@@ -1,8 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_wellness_tracker/app/auth_service.dart';
-import 'package:personal_wellness_tracker/pages/profile_widget.dart';
+// import 'package:personal_wellness_tracker/pages/profile_widget.dart';
 import 'package:personal_wellness_tracker/pages/register_page.dart';
+import 'package:personal_wellness_tracker/pages/home.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -41,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.of(context).pop();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ProfileWidget()),
+          MaterialPageRoute(builder: (_) => const HomePage()),
         );
       }
     } on FirebaseAuthException catch (e) {
