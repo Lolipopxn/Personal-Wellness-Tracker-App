@@ -43,7 +43,7 @@ void main() async {
   await initializeDateFormatting('th');
 
   final themeProvider = ThemeProvider();
-  await themeProvider.loadThemeFromPrefs(); // Load theme before running the app
+  await themeProvider.loadThemeFromPrefs();
 
   runApp(
     ChangeNotifierProvider(
@@ -66,14 +66,16 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.white,
             brightness: Brightness.light, // Light theme
+
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.grey[900], // Dark background
             brightness: Brightness.dark, // Dark theme
-            // Define other dark mode colors here if needed
+            
             appBarTheme: AppBarTheme(
               foregroundColor: Colors.white,
+              backgroundColor: Color(0xFF79D7BE), // Dark app bar color
             ),
             textTheme: TextTheme(
               bodyMedium: TextStyle(color: Colors.white70),
@@ -83,6 +85,10 @@ class MyApp extends StatelessWidget {
               iconColor: Colors.white70,
               textColor: Colors.white70,
             ),
+            cardTheme: CardThemeData(
+              color: Colors.grey[800], // Dark card color
+            ), // Dark card color
+
           ),
           themeMode: themeProvider.themeMode, // Use themeMode from ThemeProvider
           initialRoute: '/',
