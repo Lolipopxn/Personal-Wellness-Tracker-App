@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart'; // Add this import
-import 'package:shared_preferences/shared_preferences.dart'; // Add this import
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart'; // Import your main.dart to access ThemeProvider
 
 class SettingsPage extends StatefulWidget {
@@ -37,12 +37,19 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final themeProvider = Provider.of<ThemeProvider>(context); // Access ThemeProvider
+    final themeProvider = Provider.of<ThemeProvider>(
+      context,
+    ); // Access ThemeProvider
+
+    final Color? appBarBackgroundColor = Theme.of(
+      context,
+    ).appBarTheme.backgroundColor;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("จัดการบัญชีผู้ใช้"),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? Color(0xFF79D7BE), // Use theme color
+        backgroundColor:
+            appBarBackgroundColor ?? Color(0xFF79D7BE), // Use theme color
       ),
       body: Container(
         padding: const EdgeInsets.all(20.0),
@@ -56,8 +63,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     : null,
                 child: user?.photoURL == null ? const Icon(Icons.person) : null,
               ),
-              title: Text(user?.displayName ?? "ไม่ทราบชื่อ", style: Theme.of(context).textTheme.titleMedium), // Apply text style
-              subtitle: Text(user?.email ?? "ไม่ทราบอีเมล", style: Theme.of(context).textTheme.bodyMedium), // Apply text style
+              title: Text(
+                user?.displayName ?? "ไม่ทราบชื่อ",
+                style: Theme.of(context).textTheme.titleMedium,
+              ), // Apply text style
+              subtitle: Text(
+                user?.email ?? "ไม่ทราบอีเมล",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ), // Apply text style
               trailing: IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () {
@@ -101,20 +114,27 @@ class _SettingsPageState extends State<SettingsPage> {
             // Section: Settings
             SwitchListTile(
               title: const Text("โหมดมืด (Dark Mode)"),
-              value: themeProvider.themeMode == ThemeMode.dark, // Use themeProvider's themeMode
+              activeColor: Color(0xFF4DA1A9),
+              value:
+                  themeProvider.themeMode ==
+                  ThemeMode.dark, // Use themeProvider themeMode
               onChanged: (val) async {
-                themeProvider.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                themeProvider.setThemeMode(
+                  val ? ThemeMode.dark : ThemeMode.light,
+                );
                 await _saveDarkModePreference(val); // Save the preference
               },
             ),
+
             SwitchListTile(
               title: const Text("เปิดการแจ้งเตือน"),
+              activeColor: Color(0xFF4DA1A9),
               value: notificationsEnabled,
               onChanged: (val) {
                 setState(() => notificationsEnabled = val);
-                // TODO: save setting
               },
             ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.health_and_safety),
               title: const Text("ตั้งค่าสุขภาพ"),
@@ -122,20 +142,139 @@ class _SettingsPageState extends State<SettingsPage> {
                 Navigator.pushNamed(context, '/profile');
               },
             ),
+
             ListTile(
               leading: const Icon(Icons.lock),
               title: const Text("เปลี่ยนรหัสผ่าน"),
               onTap: () {
-                // TODO: ไปหน้าเปลี่ยนรหัสผ่าน
+                final currentPasswordController = TextEditingController();
+                final newPasswordController = TextEditingController();
+
+                String? currentPasswordError;
+                String? newPasswordError;
+
+                showDialog(
+                  context: context,
+                  builder: (_) {
+                    return StatefulBuilder(
+                      builder: (context, setState) {
+                        return AlertDialog(
+                          title: const Text("เปลี่ยนรหัสผ่าน"),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: currentPasswordController,
+                                decoration: InputDecoration(
+                                  labelText: "รหัสผ่านปัจจุบัน",
+                                  errorText: currentPasswordError,
+                                ),
+                                obscureText: true,
+                              ),
+                              TextField(
+                                controller: newPasswordController,
+                                decoration: InputDecoration(
+                                  labelText: "รหัสผ่านใหม่",
+                                  errorText: newPasswordError,
+                                ),
+                                obscureText: true,
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("ยกเลิก"),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final currentPassword =
+                                    currentPasswordController.text;
+                                final newPassword = newPasswordController.text;
+
+                                setState(() {
+                                  currentPasswordError = null;
+                                  newPasswordError = null;
+                                });
+
+                                if (currentPassword.isEmpty ||
+                                    newPassword.isEmpty) {
+                                  setState(() {
+                                    if (currentPassword.isEmpty) {
+                                      currentPasswordError =
+                                          "กรุณากรอกรหัสผ่านปัจจุบัน";
+                                    }
+                                    if (newPassword.isEmpty) {
+                                      newPasswordError =
+                                          "กรุณากรอกรหัสผ่านใหม่";
+                                    }
+                                  });
+                                  return;
+                                }
+
+                                try {
+                                  final user =
+                                      FirebaseAuth.instance.currentUser;
+                                  final cred = EmailAuthProvider.credential(
+                                    email: user!.email!,
+                                    password: currentPassword,
+                                  );
+                                  await user.reauthenticateWithCredential(cred);
+
+                                  await user.updatePassword(newPassword);
+
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
+                                    ),
+                                  );
+
+                                  await FirebaseAuth.instance.signOut();
+
+                                  if (!mounted) return;
+                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                    '/login',
+                                    (route) => false,
+                                  );
+                                } on FirebaseAuthException catch (e) {
+                                  setState(() {
+                                    if (e.code == 'wrong-password' ||
+                                        e.code == 'user-mismatch' ||
+                                        e.code == 'invalid-credential') {
+                                      currentPasswordError =
+                                          "รหัสผ่านปัจจุบันไม่ถูกต้อง";
+                                    } else if (e.code == 'weak-password') {
+                                      newPasswordError =
+                                          "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
+                                    }
+                                  });
+                                }
+                              },
+                              child: const Text("บันทึก"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
               },
             ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text("ออกจากระบบ"),
-              onTap: () {
-                // TODO: ออกจากระบบ
+              onTap: () async {
+                await FirebaseAuth.instance.signOut();
+
+                if (!mounted) return;
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/login', (route) => false);
               },
             ),
+            const Divider(),
           ],
         ),
       ),
