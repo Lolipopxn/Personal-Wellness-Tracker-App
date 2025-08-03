@@ -27,7 +27,7 @@ class Dashboard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isTablet ? 14 : 12,
-              color: Colors.black87,
+
             ),
           ),
         ],
@@ -38,7 +38,7 @@ class Dashboard extends StatelessWidget {
   Widget _buildHealthMetricItem({
     required String label,
     required String value,
-    required Color color,
+
     Color labelColor = Colors.grey,
   }) {
     return Column(
@@ -51,7 +51,6 @@ class Dashboard extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: color,
           ),
         ),
       ],
@@ -65,7 +64,6 @@ class Dashboard extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Row(
           children: <Widget>[
@@ -73,7 +71,7 @@ class Dashboard extends StatelessWidget {
               icon: const Icon(
                 Icons.account_circle,
                 size: 30,
-                color: Colors.black54,
+
               ),
               onPressed: () {},
             ),
@@ -83,18 +81,17 @@ class Dashboard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
               ),
             ),
           ],
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black54),
+            icon: const Icon(Icons.notifications,),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black54),
+            icon: const Icon(Icons.settings,),
             onPressed: () {},
           ),
         ],
@@ -124,7 +121,7 @@ class Dashboard extends StatelessWidget {
             // Progress Bar
             Text(
               'บันทึกมาแล้ว (7 วัน)',
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              style: TextStyle(fontSize: 14,),
             ),
             const SizedBox(height: 8),
             Row(
@@ -143,7 +140,7 @@ class Dashboard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   '14 วัน',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 14,),
                 ),
               ],
             ),
@@ -155,7 +152,7 @@ class Dashboard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+
                 ),
               ),
             ),
@@ -196,7 +193,6 @@ class Dashboard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
               ),
             ),
@@ -214,47 +210,47 @@ class Dashboard extends StatelessWidget {
                       _buildHealthMetricItem(
                         label: "ชื่อผู้ใช้",
                         value: "6510110165",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "อายุ",
                         value: "1000 ปี",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "น้ำหนัก",
                         value: "65 kg",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "ส่วนสูง",
                         value: "175 cm",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "ค่า BMI",
                         value: "21.2 (ปกติ)",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "ความดันโลหิต",
                         value: "120/80 mmHg",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "อัตราเต้นหัวใจ",
                         value: "75 bpm",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "อาหาร",
                         value: "2000 kcal",
-                        color: Colors.black87,
+
                       ),
                       _buildHealthMetricItem(
                         label: "อารมณ์",
                         value: "😊😊😊",
-                        color: Colors.black87,
+
                       ),
                     ],
                   ),

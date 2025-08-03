@@ -99,6 +99,7 @@ class _Daily extends State<DailyPage> {
 
   @override
   Widget build(BuildContext context) {
+    
     String currentDate = DateFormat(
       'dd MMMM yyyy',
       'th',
@@ -114,7 +115,7 @@ class _Daily extends State<DailyPage> {
               icon: const Icon(
                 Icons.account_circle,
                 size: 30,
-                color: Colors.black54,
+
               ),
               onPressed: () {},
             ),
@@ -124,25 +125,24 @@ class _Daily extends State<DailyPage> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
               ),
             ),
           ],
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black54),
+            icon: const Icon(Icons.notifications,),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black54),
+            icon: const Icon(Icons.settings,),
             onPressed: () {},
           ),
         ],
       ),
       body: Container(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 30),
-        color: Colors.white,
+        color: Theme.of(context).scaffoldBackgroundColor,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +151,7 @@ class _Daily extends State<DailyPage> {
             Container(
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Color(0xFFF6F4F0),
+                color: Theme.of(context).cardTheme.color ?? Color(0xFFF6F4F0),
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
@@ -166,7 +166,7 @@ class _Daily extends State<DailyPage> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E5077),
+                  color: Theme.of(context).appBarTheme.foregroundColor ?? Color(0xFF2E5077),
                 ),
               ),
             ),
@@ -197,7 +197,7 @@ class _Daily extends State<DailyPage> {
             ),
 
             Card.outlined(
-              color: Colors.white,
+              color: Theme.of(context).cardTheme.color ?? Colors.white,
               shadowColor: Colors.black,
               elevation: 10,
               child: Container(
