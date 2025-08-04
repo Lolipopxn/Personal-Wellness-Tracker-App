@@ -18,13 +18,15 @@ class _FoodSavePageState extends State<FoodSavePage> {
   String _dateKey(DateTime date) => '${date.year}-${date.month}-${date.day}';
 
   void _showMealDialog({Map<String, dynamic>? meal, int? editIdx}) {
-    String? type = meal?['type'];
-    String name = meal?['name'] ?? '';
-    String cal = meal?['cal']?.toString() ?? '';
-    String desc = meal?['desc'] ?? '';
-    File? pickedImage = meal?['image'];
+    final _formKey = GlobalKey<FormState>();
     final List<String> mealTypes = ['มื้อเช้า', 'กลางวัน', 'เย็น', 'ของว่าง'];
     final picker = ImagePicker();
+    String? type = meal?['type'];
+    final nameController = TextEditingController(text: meal?['name'] ?? '');
+    final calController = TextEditingController(text: meal?['cal']?.toString() ?? '');
+    final descController = TextEditingController(text: meal?['desc'] ?? '');
+    File? pickedImage = meal?['image'];
+    String? errorText;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -38,128 +40,151 @@ class _FoodSavePageState extends State<FoodSavePage> {
             top: 24,
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: GestureDetector(
-                    onTap: () async {
-                      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                      if (image != null) {
-                        pickedImage = File(image.path);
-                        (context as Element).markNeedsBuild();
-                      }
-                    },
-                    child: pickedImage == null
-                        ? Container(
-                            width: 260,
-                            height: 180,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: const Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                          )
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: Image.file(pickedImage!, width: 260, height: 180, fit: BoxFit.cover),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: 'ประเภทอาหาร',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  value: type,
-                  items: mealTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) => type = v,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'ชื่ออาหาร',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  controller: TextEditingController(text: name),
-                  onChanged: (v) => name = v,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'รายละเอียด',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  controller: TextEditingController(text: desc),
-                  onChanged: (v) => desc = v,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'แคลอรี่',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: cal),
-                  onChanged: (v) => cal = v,
-                ),
-                const SizedBox(height: 28),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('ยกเลิก'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (type != null && name.isNotEmpty && int.tryParse(cal) != null) {
-                            final key = _dateKey(selectedDate);
-                            if (editIdx != null) {
-                              setState(() {
-                                mealsByDate[key]![editIdx] = {
-                                  'type': type,
-                                  'name': name,
-                                  'cal': int.parse(cal),
-                                  'desc': desc,
-                                  'image': pickedImage,
-                                };
-                              });
-                            } else {
-                              setState(() {
-                                mealsByDate.putIfAbsent(key, () => []);
-                                mealsByDate[key]!.add({
-                                  'type': type,
-                                  'name': name,
-                                  'cal': int.parse(cal),
-                                  'desc': desc,
-                                  'image': pickedImage,
-                                });
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                            if (image != null) {
+                              setStateDialog(() {
+                                pickedImage = File(image.path);
                               });
                             }
-                            Navigator.of(context).pop();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          },
+                          child: pickedImage == null
+                              ? Container(
+                                  width: 260,
+                                  height: 180,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: const Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Image.file(pickedImage!, width: 260, height: 180, fit: BoxFit.cover),
+                                ),
                         ),
-                        child: Text(editIdx != null ? 'บันทึก' : 'เพิ่ม'),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'ประเภทอาหาร',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        value: type,
+                        items: mealTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        onChanged: (v) => setStateDialog(() { type = v; }),
+                        validator: (v) => v == null ? 'กรุณาเลือกประเภทอาหาร' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'ชื่ออาหาร',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        controller: nameController,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณากรอกชื่ออาหาร' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'รายละเอียด',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        controller: descController,
+                        minLines: 1,
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'แคลอรี่',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: calController,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'กรุณากรอกแคลอรี่';
+                          if (int.tryParse(v) == null || int.parse(v) < 0) return 'กรุณากรอกตัวเลขแคลอรี่ที่ถูกต้อง';
+                          return null;
+                        },
+                      ),
+                      if (errorText != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                          child: Text(errorText!, style: const TextStyle(color: Colors.red, fontSize: 14)),
+                        ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('ยกเลิก'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (_formKey.currentState?.validate() ?? false) {
+                                  final key = _dateKey(selectedDate);
+                                  if (editIdx != null) {
+                                    setState(() {
+                                      mealsByDate[key]![editIdx] = {
+                                        'type': type,
+                                        'name': nameController.text.trim(),
+                                        'cal': int.parse(calController.text.trim()),
+                                        'desc': descController.text.trim(),
+                                        'image': pickedImage,
+                                      };
+                                    });
+                                  } else {
+                                    setState(() {
+                                      mealsByDate.putIfAbsent(key, () => []);
+                                      mealsByDate[key]!.add({
+                                        'type': type,
+                                        'name': nameController.text.trim(),
+                                        'cal': int.parse(calController.text.trim()),
+                                        'desc': descController.text.trim(),
+                                        'image': pickedImage,
+                                      });
+                                    });
+                                  }
+                                  Navigator.of(context).pop();
+                                } else {
+                                  setStateDialog(() {
+                                    errorText = 'กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง';
+                                  });
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              child: Text(editIdx != null ? 'บันทึก' : 'เพิ่ม'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
