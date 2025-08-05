@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../app/firestore_service.dart';
 
 import 'package:personal_wellness_tracker/pages/dashboard.dart';
 import 'package:personal_wellness_tracker/pages/daily_page.dart';
@@ -6,8 +8,7 @@ import 'package:personal_wellness_tracker/pages/setting_page.dart';
 import 'package:personal_wellness_tracker/pages/food_save.dart';
 
 class MainScaffold extends StatefulWidget {
-
-  const MainScaffold({ super.key });
+  const MainScaffold({super.key});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -16,12 +17,39 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int currentIndex = 0;
 
+  final FirestoreService _firestoreService = FirestoreService();
+  Map<String, dynamic>? _userData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  /// เมธอดสำหรับดึงข้อมูลโปรไฟล์ผู้ใช้
+  Future<void> _fetchUserData() async {
+    try {
+      final data = await _firestoreService.getUserData();
+      if (mounted) {
+        setState(() {
+          _userData = data;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userData = {};
+        });
+      }
+    }
+  }
+
   final List<Widget> _pages = [
-    Dashboard(),
-    DailyPage(),
-    FoodSavePage(),
-    SettingsPage(),
-    SettingsPage(),
+    const Dashboard(),
+    const DailyPage(),
+    const FoodSavePage(),
+    const SettingsPage(),
+    const SettingsPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -32,6 +60,13 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    String displayName = "";
+    if (_userData != null) {
+      displayName =
+          _userData!['username'] ?? user?.displayName ?? user?.email ?? 'User';
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF79D7BE),
@@ -44,9 +79,9 @@ class _MainScaffoldState extends State<MainScaffold> {
               onPressed: () {},
             ),
             const SizedBox(width: 8),
-            const Text(
-              '6510110165',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              displayName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
