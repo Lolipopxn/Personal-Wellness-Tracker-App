@@ -63,39 +63,6 @@ class Dashboard extends StatelessWidget {
     final isTablet = screenWidth > 600;
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Row(
-          children: <Widget>[
-            IconButton(
-              icon: const Icon(
-                Icons.account_circle,
-                size: 30,
-
-              ),
-              onPressed: () {},
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              '6510110165',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.notifications,),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings,),
-            onPressed: () {},
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(30),
         child: Column(

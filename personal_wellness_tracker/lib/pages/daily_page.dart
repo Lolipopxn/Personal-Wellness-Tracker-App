@@ -105,42 +105,10 @@ class _Daily extends State<DailyPage> {
       'th',
     ).format(DateTime.now());
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFF79D7BE),
-        elevation: 0,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            IconButton(
-              icon: const Icon(
-                Icons.account_circle,
-                size: 30,
-
-              ),
-              onPressed: () {},
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              '6510110165',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.notifications,),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings,),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Container(
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Container(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 30),
         color: Theme.of(context).scaffoldBackgroundColor,
         child: Column(
@@ -554,6 +522,9 @@ class _Daily extends State<DailyPage> {
           ],
         ),
       ),
+        ],
+      ),
+      
     );
   }
 }
