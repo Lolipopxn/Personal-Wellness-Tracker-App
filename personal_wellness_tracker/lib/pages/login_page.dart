@@ -1,9 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_wellness_tracker/%E0%B9%8CNavigationBar/main_scaffold.dart';
 import 'package:personal_wellness_tracker/app/auth_service.dart';
 // import 'package:personal_wellness_tracker/pages/profile_widget.dart';
 import 'package:personal_wellness_tracker/pages/register_page.dart';
-import 'package:personal_wellness_tracker/pages/home.dart';
+// import 'package:personal_wellness_tracker/pages/home.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -39,10 +40,9 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (context.mounted) {
-        Navigator.of(context).pop();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScaffold()),
+          (route) => false,
         );
       }
     } on FirebaseAuthException catch (e) {
