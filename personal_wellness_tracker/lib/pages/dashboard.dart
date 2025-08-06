@@ -3,7 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../app/firestore_service.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+  const Dashboard({super.key, required this.onNavigate});
+  final void Function(int index) onNavigate;
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -214,13 +215,13 @@ class _DashboardState extends State<Dashboard> {
                   _buildDailyTaskItem(
                     icon: Icons.track_changes,
                     label: 'ติดตามประจำวัน',
-                    onTap: () {},
+                    onTap: () { widget.onNavigate(1); },
                     isTablet: isTablet,
                   ),
                   _buildDailyTaskItem(
                     icon: Icons.fastfood,
                     label: 'บันทึกอาหาร',
-                    onTap: () {},
+                    onTap: () {widget.onNavigate(2);},
                     isTablet: isTablet,
                   ),
                   _buildDailyTaskItem(

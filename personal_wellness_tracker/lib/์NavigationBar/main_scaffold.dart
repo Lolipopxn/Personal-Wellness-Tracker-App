@@ -26,7 +26,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     _fetchUserData();
   }
 
-  /// เมธอดสำหรับดึงข้อมูลโปรไฟล์ผู้ใช้
   Future<void> _fetchUserData() async {
     try {
       final data = await _firestoreService.getUserData();
@@ -44,14 +43,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
-  final List<Widget> _pages = [
-    const Dashboard(),
-    const DailyPage(),
-    const FoodSavePage(),
-    const SettingsPage(),
-    const SettingsPage(),
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       currentIndex = index;
@@ -66,6 +57,20 @@ class _MainScaffoldState extends State<MainScaffold> {
       displayName =
           _userData!['username'] ?? user?.displayName ?? user?.email ?? 'User';
     }
+
+    final List<Widget> pages = [
+      Dashboard(
+        onNavigate: (int index) {
+          setState(() {
+            currentIndex = index;
+          });
+        },
+      ),
+      const DailyPage(),
+      const FoodSavePage(),
+      const SettingsPage(),
+      const SettingsPage(),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -98,7 +103,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ],
       ),
-      body: _pages[currentIndex],
+      body: pages[currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.only(

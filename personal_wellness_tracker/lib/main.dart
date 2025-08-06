@@ -3,7 +3,7 @@ import 'package:personal_wellness_tracker/pages/food_save.dart';
 import 'package:personal_wellness_tracker/pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/profile.dart';
-import 'pages/dashboard.dart';
+// import 'pages/dashboard.dart';
 import 'pages/daily_page.dart';
 import 'pages/setting_page.dart';
 import 'package:personal_wellness_tracker/์NavigationBar/main_scaffold.dart';
@@ -112,7 +112,7 @@ class MyApp extends StatelessWidget {
             '/login': (context) => LoginPage(),
             '/profile': (context) => Profile(),
             '/register': (context) => RegisterPage(),
-            '/dashboard': (context) => Dashboard(),
+            // '/dashboard': (context) => Dashboard(),
             '/food_save': (context) => FoodSavePage(),
             '/daily': (context) => DailyPage(),
             '/settings': (context) => SettingsPage(),
