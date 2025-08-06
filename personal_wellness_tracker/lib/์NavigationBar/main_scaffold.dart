@@ -105,7 +105,12 @@ class _MainScaffoldState extends State<MainScaffold> {
             topLeft: Radius.circular(30),
             topRight: Radius.circular(30),
           ),
-          border: Border.all(color: Colors.white, width: 2),
+          border: Border.all(
+            color:
+                Theme.of(context).bottomNavigationBarTheme.backgroundColor ??
+                Colors.white,
+            width: 2,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withAlpha(50),
@@ -122,38 +127,55 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
           child: SizedBox(
             height: 110,
-            child: BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.white,
-              selectedItemColor: const Color(0xFF79D7BE),
-              unselectedItemColor: Colors.black,
-              iconSize: 30,
-              selectedFontSize: 16,
-              unselectedFontSize: 14,
-              currentIndex: currentIndex,
-              onTap: _onItemTapped,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home),
-                  label: 'หน้าแรก',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard),
-                  label: 'บันทึก',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.add_circle_outline),
-                  label: 'เพิ่มอาหาร',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.bar_chart),
-                  label: 'สถิติ',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: 'โปรไฟล์',
-                ),
-              ],
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                splashColor: Colors.transparent,
+                // highlightColor: Colors.transparent,
+              ),
+              child: BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                backgroundColor:
+                    Theme.of(
+                      context,
+                    ).bottomNavigationBarTheme.backgroundColor ??
+                    Colors.white,
+                selectedItemColor: const Color(0xFF79D7BE),
+                unselectedItemColor:
+                    Theme.of(
+                      context,
+                    ).bottomNavigationBarTheme.unselectedItemColor ??
+                    Colors.black,
+                iconSize: 30,
+                selectedFontSize: 16,
+                unselectedFontSize: 14,
+                currentIndex: currentIndex,
+                onTap: _onItemTapped,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: 'หน้าแรก',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.dashboard),
+                    label: 'บันทึก',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.add_circle_outline),
+                    label: 'เพิ่มอาหาร',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.bar_chart),
+                    label: 'สถิติ',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person),
+                    label: 'โปรไฟล์',
+                  ),
+                ],
+                elevation: 0,
+                useLegacyColorScheme: false,
+                enableFeedback: false,
+              ),
             ),
           ),
         ),

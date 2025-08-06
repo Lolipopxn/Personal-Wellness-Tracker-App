@@ -68,6 +68,12 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.white,
             brightness: Brightness.light, // Light theme
 
+            bottomNavigationBarTheme: BottomNavigationBarThemeData(
+              unselectedIconTheme: IconThemeData(color: Colors.black), 
+              unselectedItemColor: Colors.black, // Unselected item color
+              backgroundColor: Colors.white, 
+            ),
+
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
@@ -78,6 +84,13 @@ class MyApp extends StatelessWidget {
               foregroundColor: Colors.white,
               backgroundColor: Color(0xFF79D7BE), // Dark app bar color
             ),
+
+            bottomNavigationBarTheme: BottomNavigationBarThemeData(
+              unselectedIconTheme: IconThemeData(color: Colors.white), 
+              unselectedItemColor: Colors.white, // Unselected item color
+              backgroundColor: Colors.grey[900], 
+            ),
+
             textTheme: TextTheme(
               bodyMedium: TextStyle(color: Colors.white70),
               titleMedium: TextStyle(color: Colors.white),
