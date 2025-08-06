@@ -1,7 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../app/firestore_service.dart';
 
-class Dashboard extends StatelessWidget {
+class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
+
+  @override
+  State<Dashboard> createState() => _DashboardState();
+}
+
+class _DashboardState extends State<Dashboard> {
+  final FirestoreService _firestoreService = FirestoreService();
+  Map<String, dynamic>? _userData;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final data = await _firestoreService.getUserData();
+      if (mounted) {
+        setState(() {
+          _userData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = "เกิดข้อผิดพลาดในการดึงข้อมูล: $e";
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _calculateBmi(double? weight, double? height) {
+    if (weight == null || height == null || height == 0) {
+      return "N/A";
+    }
+    final double heightInMeters = height / 100;
+    final double bmi = weight / (heightInMeters * heightInMeters);
+
+    String interpretation;
+    if (bmi < 18.5) {
+      interpretation = "น้ำหนักน้อย";
+    } else if (bmi < 24.9) {
+      interpretation = "ปกติ";
+    } else if (bmi < 29.9) {
+      interpretation = "น้ำหนักเกิน";
+    } else {
+      interpretation = "อ้วน";
+    }
+    return "${bmi.toStringAsFixed(1)} ($interpretation)";
+  }
 
   Widget _buildDailyTaskItem({
     required IconData icon,
@@ -25,10 +82,7 @@ class Dashboard extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: isTablet ? 14 : 12,
-
-            ),
+            style: TextStyle(fontSize: isTablet ? 14 : 12),
           ),
         ],
       ),
@@ -38,7 +92,6 @@ class Dashboard extends StatelessWidget {
   Widget _buildHealthMetricItem({
     required String label,
     required String value,
-
     Color labelColor = Colors.grey,
   }) {
     return Column(
@@ -48,10 +101,7 @@ class Dashboard extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -59,10 +109,73 @@ class Dashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(body: Center(child: Text(_errorMessage!)));
+    }
+
+    if (_userData == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("ไม่พบข้อมูลผู้ใช้"),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/profile');
+                },
+                child: const Text("ไปที่หน้าโปรไฟล์"),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    final String displayName =
+        _userData!['username'] ??
+        user?.displayName ??
+        _userData!['email'] ??
+        'User';
+    final int? age = _userData!['age'];
+    final double? weight = _userData!['weight'];
+    final double? height = _userData!['height'];
+    final String bmiResult = _calculateBmi(weight, height);
+
+    final Map<String, dynamic> healthInfo = _userData!['healthInfo'] ?? {};
+    final String bloodPressure = healthInfo['bloodPressure'] ?? 'N/A';
+    final int? heartRate = healthInfo['heartRate'];
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
 
     return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        title: Row(
+          children: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.account_circle, size: 30),
+              onPressed: () {},
+            ),
+            const SizedBox(width: 8),
+            Text(
+              displayName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(30),
         child: Column(
@@ -84,12 +197,7 @@ class Dashboard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Progress Bar
-            Text(
-              'บันทึกมาแล้ว (7 วัน)',
-              style: TextStyle(fontSize: 14,),
-            ),
+            const Text('บันทึกมาแล้ว (7 วัน)', style: TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
@@ -105,22 +213,14 @@ class Dashboard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  '14 วัน',
-                  style: TextStyle(fontSize: 14,),
-                ),
+                const Text('14 วัน', style: TextStyle(fontSize: 14)),
               ],
             ),
             const SizedBox(height: 30),
-
             const Center(
               child: Text(
                 'สิ่งที่ต้องทำประจำวัน',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 15),
@@ -133,19 +233,19 @@ class Dashboard extends StatelessWidget {
                   _buildDailyTaskItem(
                     icon: Icons.track_changes,
                     label: 'ติดตามประจำวัน',
-                    onTap: () => print('Daily Tracking tapped'),
+                    onTap: () {},
                     isTablet: isTablet,
                   ),
                   _buildDailyTaskItem(
                     icon: Icons.fastfood,
                     label: 'บันทึกอาหาร',
-                    onTap: () => print('Record Food tapped'),
+                    onTap: () {},
                     isTablet: isTablet,
                   ),
                   _buildDailyTaskItem(
                     icon: Icons.bar_chart,
                     label: 'ผลความก้าวหน้า',
-                    onTap: () => print('Progress Results tapped'),
+                    onTap: () {},
                     isTablet: isTablet,
                   ),
                 ],
@@ -153,14 +253,10 @@ class Dashboard extends StatelessWidget {
             ),
             const SizedBox(height: 30),
             const Divider(thickness: 2, color: Colors.grey),
-
             const Center(
               child: Text(
                 "สุขภาพประจำวัน",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 15),
@@ -176,56 +272,44 @@ class Dashboard extends StatelessWidget {
                     children: [
                       _buildHealthMetricItem(
                         label: "ชื่อผู้ใช้",
-                        value: "6510110165",
-
+                        value: displayName,
                       ),
                       _buildHealthMetricItem(
                         label: "อายุ",
-                        value: "1000 ปี",
-
+                        value: "${age ?? 'N/A'} ปี",
                       ),
                       _buildHealthMetricItem(
                         label: "น้ำหนัก",
-                        value: "65 kg",
-
+                        value: "${weight ?? 'N/A'} kg",
                       ),
                       _buildHealthMetricItem(
                         label: "ส่วนสูง",
-                        value: "175 cm",
-
+                        value: "${height ?? 'N/A'} cm",
                       ),
                       _buildHealthMetricItem(
                         label: "ค่า BMI",
-                        value: "21.2 (ปกติ)",
-
+                        value: bmiResult,
                       ),
                       _buildHealthMetricItem(
                         label: "ความดันโลหิต",
-                        value: "120/80 mmHg",
-
+                        value: bloodPressure,
                       ),
                       _buildHealthMetricItem(
                         label: "อัตราเต้นหัวใจ",
-                        value: "75 bpm",
-
+                        value: "${heartRate ?? 'N/A'} bpm",
                       ),
                       _buildHealthMetricItem(
                         label: "อาหาร",
                         value: "2000 kcal",
-
                       ),
-                      _buildHealthMetricItem(
-                        label: "อารมณ์",
-                        value: "😊😊😊",
-
-                      ),
+                      _buildHealthMetricItem(label: "อารมณ์", value: "😊😊😊"),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         "ผลการประเมิน: ",
                         style: TextStyle(
                           fontSize: 18,
@@ -233,13 +317,9 @@ class Dashboard extends StatelessWidget {
                           color: Colors.green,
                         ),
                       ),
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      Icon(Icons.check_circle, color: Colors.green, size: 24),
+                      SizedBox(width: 8),
+                      Text(
                         "สุขภาพดี",
                         style: TextStyle(
                           fontSize: 16,
