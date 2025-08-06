@@ -169,10 +169,11 @@ class _DashboardState extends State<Dashboard> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
-                child: Icon(
-                  Icons.image,
-                  size: isTablet ? 100 : 80,
-                  color: Colors.grey[600],
+                child: Image.asset(
+                  'assets/images/Health.jpg',
+                  width: double.infinity,
+                  height: 150,
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
