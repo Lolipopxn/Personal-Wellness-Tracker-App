@@ -186,7 +186,118 @@ class _SettingsPageState extends State<SettingsPage> {
                 leading: const Icon(Icons.lock),
                 title: const Text("เปลี่ยนรหัสผ่าน"),
                 onTap: () {
-                  // TODO
+                  final currentPasswordController = TextEditingController();
+                final newPasswordController = TextEditingController();
+
+                String? currentPasswordError;
+                String? newPasswordError;
+
+                showDialog(
+                  context: context,
+                  builder: (_) {
+                    return StatefulBuilder(
+                      builder: (context, setState) {
+                        return AlertDialog(
+                          title: const Text("เปลี่ยนรหัสผ่าน"),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: currentPasswordController,
+                                decoration: InputDecoration(
+                                  labelText: "รหัสผ่านปัจจุบัน",
+                                  errorText: currentPasswordError,
+                                ),
+                                obscureText: true,
+                              ),
+                              TextField(
+                                controller: newPasswordController,
+                                decoration: InputDecoration(
+                                  labelText: "รหัสผ่านใหม่",
+                                  errorText: newPasswordError,
+                                ),
+                                obscureText: true,
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("ยกเลิก"),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final currentPassword =
+                                    currentPasswordController.text;
+                                final newPassword = newPasswordController.text;
+
+                                setState(() {
+                                  currentPasswordError = null;
+                                  newPasswordError = null;
+                                });
+
+                                if (currentPassword.isEmpty ||
+                                    newPassword.isEmpty) {
+                                  setState(() {
+                                    if (currentPassword.isEmpty) {
+                                      currentPasswordError =
+                                          "กรุณากรอกรหัสผ่านปัจจุบัน";
+                                    }
+                                    if (newPassword.isEmpty) {
+                                      newPasswordError =
+                                          "กรุณากรอกรหัสผ่านใหม่";
+                                    }
+                                  });
+                                  return;
+                                }
+
+                                try {
+                                  final user =
+                                      FirebaseAuth.instance.currentUser;
+                                  final cred = EmailAuthProvider.credential(
+                                    email: user!.email!,
+                                    password: currentPassword,
+                                  );
+                                  await user.reauthenticateWithCredential(cred);
+
+                                  await user.updatePassword(newPassword);
+
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
+                                    ),
+                                  );
+
+                                  await FirebaseAuth.instance.signOut();
+
+                                  if (!mounted) return;
+                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                    '/login',
+                                    (route) => false,
+                                  );
+                                } on FirebaseAuthException catch (e) {
+                                  setState(() {
+                                    if (e.code == 'wrong-password' ||
+                                        e.code == 'user-mismatch' ||
+                                        e.code == 'invalid-credential') {
+                                      currentPasswordError =
+                                          "รหัสผ่านปัจจุบันไม่ถูกต้อง";
+                                    } else if (e.code == 'weak-password') {
+                                      newPasswordError =
+                                          "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
+                                    }
+                                  });
+                                }
+                              },
+                              child: const Text("บันทึก"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
                 },
               ),
               const Divider(),
