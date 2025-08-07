@@ -77,7 +77,7 @@ class _DashboardState extends State<Dashboard> {
               color: Colors.grey[200],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: isTablet ? 50 : 40, color: Colors.blue),
+            child: Icon(icon, size: isTablet ? 50 : 40, color: Color(0xFF79D7BE)),
           ),
           const SizedBox(height: 8),
           Text(
