@@ -114,4 +114,23 @@ class FirestoreService {
         .doc(mealId)
         .delete();
   }
+
+    Future<void> saveDailyTask(Map<String, dynamic> taskData, DateTime dateTime) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("No signed-in user");
+
+    final String date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+
+    final data = {
+      ...taskData,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('tasks_log')
+        .doc(date)
+        .set(data, SetOptions(merge: true));
+  }
 }

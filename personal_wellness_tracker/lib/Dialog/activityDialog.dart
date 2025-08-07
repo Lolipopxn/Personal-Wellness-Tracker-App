@@ -1,4 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import '../app/firestore_service.dart';
 
 class ActivitySection extends StatefulWidget {
   const ActivitySection({super.key});
@@ -9,6 +13,7 @@ class ActivitySection extends StatefulWidget {
 
 class _ActivitySectionState extends State<ActivitySection> {
   List<String> activities = [];
+  final FirestoreService _firestoreService = FirestoreService();
 
   void showAddActivityDialog() {
     final controller = TextEditingController();
@@ -30,14 +35,48 @@ class _ActivitySectionState extends State<ActivitySection> {
             child: Text("ยกเลิก"),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 setState(() {
                   activities.add(controller.text.trim());
                 });
+
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('กรุณาล็อกอินก่อนบันทึกข้อมูล')),
+                  );
+                  return;
+                }
+
+                final newActivity = {
+                  'activity': controller.text.trim(),
+                  'isTaskCompleted': true,
+                };
+
+                final exerciseData = {
+                  'activities': FieldValue.arrayUnion([newActivity]),
+                };
+
+                try {
+                  await _firestoreService.saveDailyTask(
+                    exerciseData,
+                    DateTime.now(),
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('บันทึกกิจกรรมเรียบร้อย')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+                }
               }
+
               Navigator.pop(context);
             },
+
             child: Text("ตกลง"),
           ),
         ],

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import '../app/firestore_service.dart';
+
 Future<void> showSleepTrackingDialog(
   BuildContext context, {
-  required void Function(bool isSaved) onConfirmed,
+  required void Function() onConfirmed,
 }) async {
+  final FirestoreService _firestoreService = FirestoreService();
 
   final sleepTimeController = TextEditingController();
   final wakeTimeController = TextEditingController();
@@ -67,10 +71,12 @@ Future<void> showSleepTrackingDialog(
                     child: DropdownButton<String>(
                       value: sleepQuality,
                       items: ['ดี', 'ปานกลาง', 'แย่']
-                          .map((value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value),
-                              ))
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) {
                         setState(() {
@@ -88,11 +94,45 @@ Future<void> showSleepTrackingDialog(
                 child: Text("ยกเลิก"),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (sleepTimeController.text.isNotEmpty &&
                       wakeTimeController.text.isNotEmpty) {
-                    onConfirmed(true); 
+
+                    final user = FirebaseAuth.instance.currentUser;
+                    if (user == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('กรุณาล็อกอินก่อนบันทึกข้อมูล')),
+                      );
+                      return;
+                    }
+
+                    final exerciseData = {
+                      'sleepTaskId': {
+                        'sleepTime': sleepTimeController.text.trim(),
+                        'wakeTime': wakeTimeController.text.trim(),
+                        'sleepQuality': sleepQuality,
+                        'isTaskCompleted': true
+                        },
+                    };
+
+                    try {
+                      await _firestoreService.saveDailyTask(
+                        exerciseData,
+                        DateTime.now(),
+                      );
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('บันทึกข้อมูลการนอนสำเร็จ'),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+                      );
+                    }
                   }
+
                   Navigator.pop(context);
                 },
                 child: Text("ตกลง"),
