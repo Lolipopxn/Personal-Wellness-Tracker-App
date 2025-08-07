@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:image_picker/image_picker.dart';
+import '../services/nutrition_service.dart';
+import '../widgets/nutrition_chart.dart';
+import 'mock_api_manager_page.dart';
 
 class FoodSavePage extends StatefulWidget {
   const FoodSavePage({super.key});
@@ -18,7 +22,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
   String _dateKey(DateTime date) => '${date.year}-${date.month}-${date.day}';
 
   void _showMealDialog({Map<String, dynamic>? meal, int? editIdx}) {
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
     final List<String> mealTypes = ['มื้อเช้า', 'กลางวัน', 'เย็น', 'ของว่าง'];
     final picker = ImagePicker();
     String? type = meal?['type'];
@@ -26,7 +30,64 @@ class _FoodSavePageState extends State<FoodSavePage> {
     final calController = TextEditingController(text: meal?['cal']?.toString() ?? '');
     final descController = TextEditingController(text: meal?['desc'] ?? '');
     File? pickedImage = meal?['image'];
-    String? errorText;
+    NutritionData? nutritionData = meal?['nutrition'] != null ? 
+        NutritionData.fromJson(meal!['nutrition']) : null;
+    bool isLoadingNutrition = false;
+    Timer? searchTimer;
+
+    // ฟังก์ชันสำหรับดึงข้อมูลโภชนาการ
+    Future<void> fetchNutritionData(StateSetter setStateDialog, [String? searchText]) async {
+      final searchQuery = searchText ?? nameController.text.trim();
+      print('🚀 fetchNutritionData called with: "$searchQuery"');
+      if (searchQuery.isEmpty) {
+        print('❌ Search query is empty, returning');
+        return;
+      }
+      
+      print('⏳ Setting loading state to true');
+      setStateDialog(() {
+        isLoadingNutrition = true;
+      });
+
+      try {
+        print('📡 Calling NutritionService.getNutritionData...');
+        final data = await NutritionService.getNutritionData(searchQuery);
+        
+        print('📊 Received data: ${data != null ? "Found!" : "Not found"}');
+        setStateDialog(() {
+          nutritionData = data;
+          isLoadingNutrition = false;
+          // อัปเดตแคลอรี่จาก API ถ้ามีข้อมูล
+          if (data != null) {
+            print('✅ Updating calories to: ${data.calories.toInt()}');
+            calController.text = data.calories.toInt().toString();
+          }
+        });
+      } catch (e) {
+        print('❌ Error in fetchNutritionData: $e');
+        setStateDialog(() {
+          isLoadingNutrition = false;
+        });
+      }
+    }
+
+    // ฟังก์ชันสำหรับค้นหาอัตโนมัติด้วย debounce
+    void autoSearchNutrition(StateSetter setStateDialog, String searchText) {
+      print('⏰ autoSearchNutrition called with: "$searchText"');
+      // ยกเลิก timer เก่า
+      searchTimer?.cancel();
+      
+      // สร้าง timer ใหม่
+      searchTimer = Timer(const Duration(milliseconds: 800), () {
+        print('⏰ Timer triggered for: "$searchText" (length: ${searchText.trim().length})');
+        if (searchText.trim().length >= 2) {
+          print('✅ Text length >= 2, calling fetchNutritionData');
+          fetchNutritionData(setStateDialog, searchText);
+        } else {
+          print('❌ Text too short, skipping search');
+        }
+      });
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -44,7 +105,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
             builder: (context, setStateDialog) {
               return SingleChildScrollView(
                 child: Form(
-                  key: _formKey,
+                  key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,11 +152,95 @@ class _FoodSavePageState extends State<FoodSavePage> {
                         decoration: InputDecoration(
                           labelText: 'ชื่ออาหาร',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (nutritionData != null)
+                                Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              if (isLoadingNutrition)
+                                const Padding(
+                                  padding: EdgeInsets.all(12.0),
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.search, color: Colors.green),
+                                onPressed: isLoadingNutrition 
+                                    ? null 
+                                    : () => fetchNutritionData(setStateDialog),
+                                tooltip: 'ค้นหาข้อมูลโภชนาการ',
+                              ),
+                            ],
+                          ),
+                          helperText: 'พิมพ์ชื่ออาหารเพื่อค้นหาข้อมูลโภชนาการอัตโนมัติ',
+                          helperStyle: const TextStyle(fontSize: 12),
                         ),
                         controller: nameController,
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'กรุณากรอกชื่ออาหาร' : null,
+                        onChanged: (value) {
+                          print('📝 onChanged triggered with: "$value"');
+                          // รีเซ็ตข้อมูลโภชนาการเมื่อผู้ใช้เปลี่ยนชื่ออาหาร
+                          if (nutritionData != null) {
+                            print('🔄 Resetting previous nutrition data');
+                            setStateDialog(() {
+                              nutritionData = null;
+                              // ไม่ลบค่าแคลอรี่ที่ผู้ใช้อาจกรอกไว้
+                            });
+                          }
+                          
+                          // เริ่มการค้นหาอัตโนมัติ
+                          print('🚀 Starting auto search...');
+                          autoSearchNutrition(setStateDialog, value);
+                        },
                       ),
                       const SizedBox(height: 16),
+                      // แสดงข้อมูลโภชนาการ
+                      if (nutritionData != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green[200]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.green[600], size: 24),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'พบข้อมูลโภชนาการ',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  NutritionChart(nutritionData: nutritionData!, size: 140),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        NutritionLegend(nutritionData: nutritionData!),
+                                        const SizedBox(height: 8),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       TextFormField(
                         decoration: InputDecoration(
                           labelText: 'รายละเอียด',
@@ -108,28 +253,39 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       const SizedBox(height: 16),
                       TextFormField(
                         decoration: InputDecoration(
-                          labelText: 'แคลอรี่',
+                          labelText: 'แคลอรี่ (ไม่บังคับ)',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          suffixText: 'cal',
+                          enabled: nutritionData == null, // ปิดการแก้ไขถ้ามีข้อมูลจาก API
+                          helperText: nutritionData != null 
+                              ? 'ใช้ข้อมูลจาก API' 
+                              : 'ถ้าไม่กรอก ระบบจะใช้ข้อมูลจาก API หรือค่าเริ่มต้น 100 cal',
+                          helperStyle: TextStyle(
+                            color: nutritionData != null ? Colors.green : Colors.grey[600],
+                            fontSize: 12,
+                          ),
                         ),
                         keyboardType: TextInputType.number,
                         controller: calController,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'กรุณากรอกแคลอรี่';
-                          if (int.tryParse(v) == null || int.parse(v) < 0) return 'กรุณากรอกตัวเลขแคลอรี่ที่ถูกต้อง';
+                          // ตรวจสอบเฉพาะในกรณีที่มีการกรอกข้อมูล
+                          if (v != null && v.trim().isNotEmpty) {
+                            if (int.tryParse(v) == null || int.parse(v) < 0) {
+                              return 'กรุณากรอกตัวเลขแคลอรี่ที่ถูกต้อง';
+                            }
+                          }
                           return null;
                         },
                       ),
-                      if (errorText != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0, left: 4.0),
-                          child: Text(errorText!, style: const TextStyle(color: Colors.red, fontSize: 14)),
-                        ),
                       const SizedBox(height: 28),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () => Navigator.of(context).pop(),
+                              onPressed: () {
+                                searchTimer?.cancel(); // ยกเลิก timer
+                                Navigator.of(context).pop();
+                              },
                               child: const Text('ยกเลิก'),
                             ),
                           ),
@@ -137,35 +293,53 @@ class _FoodSavePageState extends State<FoodSavePage> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () {
-                                if (_formKey.currentState?.validate() ?? false) {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  searchTimer?.cancel(); // ยกเลิก timer
                                   final key = _dateKey(selectedDate);
+                                  
+                                  // คำนวณแคลอรี่: ลำดับความสำคัญ API > ผู้ใช้กรอก > ค่าเริ่มต้น 100
+                                  int caloriesValue;
+                                  if (nutritionData != null) {
+                                    // ใช้ข้อมูลจาก API
+                                    caloriesValue = nutritionData!.calories.toInt();
+                                  } else if (calController.text.trim().isNotEmpty) {
+                                    // ใช้ข้อมูลที่ผู้ใช้กรอก
+                                    caloriesValue = int.parse(calController.text.trim());
+                                  } else {
+                                    // ใช้ค่าเริ่มต้น
+                                    caloriesValue = 100;
+                                  }
+                                  
                                   if (editIdx != null) {
                                     setState(() {
-                                      mealsByDate[key]![editIdx] = {
+                                      final mealData = {
                                         'type': type,
                                         'name': nameController.text.trim(),
-                                        'cal': int.parse(calController.text.trim()),
+                                        'cal': caloriesValue,
                                         'desc': descController.text.trim(),
                                         'image': pickedImage,
+                                        'nutrition': nutritionData?.toJson(),
                                       };
+                                      mealsByDate[key]![editIdx] = mealData;
                                     });
                                   } else {
                                     setState(() {
                                       mealsByDate.putIfAbsent(key, () => []);
-                                      mealsByDate[key]!.add({
+                                      final mealData = {
                                         'type': type,
                                         'name': nameController.text.trim(),
-                                        'cal': int.parse(calController.text.trim()),
+                                        'cal': caloriesValue,
                                         'desc': descController.text.trim(),
                                         'image': pickedImage,
-                                      });
+                                        'nutrition': nutritionData?.toJson(),
+                                      };
+                                      mealsByDate[key]!.add(mealData);
                                     });
                                   }
                                   Navigator.of(context).pop();
                                 } else {
-                                  setStateDialog(() {
-                                    errorText = 'กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง';
-                                  });
+                                  // แสดงข้อผิดพลาดเฉพาะเมื่อมีฟิลด์ที่จำเป็นไม่ได้กรอก (เช่น ประเภทอาหาร, ชื่ออาหาร)
+                                  // ไม่แสดงข้อผิดพลาดเกี่ยวกับแคลอรี่เนื่องจากไม่บังคับแล้ว
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -200,6 +374,18 @@ class _FoodSavePageState extends State<FoodSavePage> {
         title: const Text('Meal Logging', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.blue, size: 24),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MockApiManagerPage(),
+                ),
+              );
+            },
+            tooltip: 'จัดการ MockAPI',
+          ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline, color: Colors.green, size: 28),
             onPressed: () => _showMealDialog(),
@@ -298,24 +484,40 @@ class _FoodSavePageState extends State<FoodSavePage> {
           children: [
             // Timeline
             Container(
-              width: 40,
+              width: 50,
               child: Column(
                 children: [
                   Container(
-                    width: 24,
-                    height: 24,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: typeMeals.isNotEmpty ? color : Colors.grey[300],
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey[400]!, width: 2),
+                      boxShadow: typeMeals.isNotEmpty ? [
+                        BoxShadow(
+                          color: color.withOpacity(0.3),
+                          spreadRadius: 2,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
                     ),
-                    child: Icon(icon, color: typeMeals.isNotEmpty ? Colors.white : Colors.grey[500], size: 16),
+                    child: Icon(
+                      icon, 
+                      color: Colors.white, 
+                      size: 18
+                    ),
                   ),
                   if (!isLast)
                     Container(
-                      width: 4,
-                      height: 60,
-                      color: Colors.grey[300],
+                      width: 3,
+                      height: typeMeals.isEmpty ? 80 : 
+                             (typeMeals.length > 1 || (typeMeals.isNotEmpty && typeMeals[0]['nutrition'] != null)) ? 
+                             160 : 120,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                 ],
               ),
@@ -324,55 +526,274 @@ class _FoodSavePageState extends State<FoodSavePage> {
             Expanded(
               child: typeMeals.isEmpty
                   ? Padding(
-                      padding: const EdgeInsets.only(top: 8.0, bottom: 32),
-                      child: Text('ไม่มี${type}', style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+                      padding: const EdgeInsets.only(top: 12.0, bottom: 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              type,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: color,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'ยังไม่มีอาหารในมื้อนี้',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
                     )
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 0, bottom: 8, top: 4),
-                          child: Text(type, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: color)),
+                        // หัวข้อมื้อ
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(25),
+                            border: Border.all(color: color.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, color: color, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                type,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: color,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${typeMeals.length} รายการ',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         ...typeMeals.map((meal) => GestureDetector(
                               onTap: () => _showMealDialog(meal: meal, editIdx: meals.indexOf(meal)),
-                              child: Card(
-                                margin: const EdgeInsets.only(bottom: 12, right: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                elevation: 2,
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: meal['image'] != null
-                                          ? Image.file(meal['image'], width: 70, height: 70, fit: BoxFit.cover)
-                                          : Container(
-                                              width: 70,
-                                              height: 70,
-                                              color: Colors.grey[200],
-                                              child: const Icon(Icons.image, size: 32, color: Colors.grey),
-                                            ),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 16, right: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.1),
+                                      spreadRadius: 1,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    // ส่วนหลัก: รูปภาพ + ข้อมูลพื้นฐาน
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        children: [
+                                          // รูปภาพอาหาร
+                                          Container(
+                                            width: 80,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(12),
+                                              color: Colors.grey[100],
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(12),
+                                              child: meal['image'] != null
+                                                  ? Image.file(
+                                                      meal['image'], 
+                                                      width: 80, 
+                                                      height: 80, 
+                                                      fit: BoxFit.cover
+                                                    )
+                                                  : Icon(
+                                                      Icons.restaurant, 
+                                                      size: 40, 
+                                                      color: Colors.grey[400]
+                                                    ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          // ข้อมูลอาหาร
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // ชื่ออาหาร
+                                                Text(
+                                                  meal['name'] ?? '',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                // รายละเอียด (ถ้ามี)
+                                                if ((meal['desc'] ?? '').isNotEmpty)
+                                                  Text(
+                                                    meal['desc'],
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          // ไอคอนแก้ไข
+                                          Icon(
+                                            Icons.edit,
+                                            color: Colors.grey[400],
+                                            size: 20,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // ส่วนข้อมูลโภชนาการ (ถ้ามี)
+                                    if (meal['nutrition'] != null) 
+                                      Container(
+                                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green[50],
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.green[100]!),
+                                        ),
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(meal['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                            // หัวข้อ
                                             Row(
                                               children: [
-                                                Text('${meal['cal'] ?? ''} cal', style: const TextStyle(fontSize: 15, color: Colors.red)),
-                                                const SizedBox(width: 8),
-                                                if ((meal['desc'] ?? '').isNotEmpty)
-                                                  Flexible(child: Text(meal['desc'], style: const TextStyle(fontSize: 14, color: Colors.black87), overflow: TextOverflow.ellipsis)),
+                                                Icon(Icons.verified, size: 16, color: Colors.green[600]),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'ข้อมูลโภชนาการ',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green[700],
+                                                  ),
+                                                ),
+                                                const Spacer(),
+                                                Text(
+                                                  'จาก API',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.green[600],
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
                                               ],
+                                            ),
+                                            const SizedBox(height: 12),
+                                            // กราฟและข้อมูลโภชนาการ
+                                            Row(
+                                              children: [
+                                                // กราฟโภชนาการขนาดใหญ่
+                                                NutritionChart(
+                                                  nutritionData: NutritionData.fromJson(meal['nutrition']), 
+                                                  size: 100
+                                                ),
+                                                const SizedBox(width: 16),
+                                                // ข้อมูลโภชนาการละเอียด
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      _buildNutrientRow(
+                                                        'โปรตีน',
+                                                        '${NutritionData.fromJson(meal['nutrition']).protein.toStringAsFixed(1)}g',
+                                                        Colors.red[400]!,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      _buildNutrientRow(
+                                                        'คาร์โบไฮเดรต',
+                                                        '${NutritionData.fromJson(meal['nutrition']).carbs.toStringAsFixed(1)}g',
+                                                        Colors.blue[400]!,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      _buildNutrientRow(
+                                                        'ไขมัน',
+                                                        '${NutritionData.fromJson(meal['nutrition']).fat.toStringAsFixed(1)}g',
+                                                        Colors.orange[400]!,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      _buildNutrientRow(
+                                                        'ใยอาหาร',
+                                                        '${NutritionData.fromJson(meal['nutrition']).fiber.toStringAsFixed(1)}g',
+                                                        Colors.green[400]!,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      _buildNutrientRow(
+                                                        'น้ำตาล',
+                                                        '${NutritionData.fromJson(meal['nutrition']).sugar.toStringAsFixed(1)}g',
+                                                        Colors.pink[400]!,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            // สรุปแคลอรี่
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red[50],
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(color: Colors.red[300]!, width: 1.5),
+                                              ),
+                                              child: Text(
+                                                'รวม ${NutritionData.fromJson(meal['nutrition']).calories.toStringAsFixed(0)} แคลอรี่',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.red[700],
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -383,6 +804,40 @@ class _FoodSavePageState extends State<FoodSavePage> {
           ],
         );
       },
+    );
+  }
+
+  // Helper function สำหรับแสดงข้อมูลโภชนาการแต่ละบรรทัด
+  Widget _buildNutrientRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
