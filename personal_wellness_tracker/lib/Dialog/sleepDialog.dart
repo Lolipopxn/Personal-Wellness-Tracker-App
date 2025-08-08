@@ -8,10 +8,17 @@ Future<void> showSleepTrackingDialog(
   required void Function() onConfirmed,
 }) async {
   final FirestoreService _firestoreService = FirestoreService();
+  final taskData = await _firestoreService.getDailyTask(DateTime.now());
 
-  final sleepTimeController = TextEditingController();
-  final wakeTimeController = TextEditingController();
-  String sleepQuality = 'ดี';
+  final sleepTimeController = TextEditingController(
+    text: taskData?['sleepTaskId']?['sleepTime'] ?? '',
+  );
+  final wakeTimeController = TextEditingController(
+    text: taskData?['sleepTaskId']?['wakeTime'] ?? '',
+  );
+  String sleepQuality = taskData != null && taskData['sleepQuality'] != null
+      ? taskData['sleepQuality']
+      : 'ดี';
 
   await showDialog(
     context: context,
@@ -97,7 +104,6 @@ Future<void> showSleepTrackingDialog(
                 onPressed: () async {
                   if (sleepTimeController.text.isNotEmpty &&
                       wakeTimeController.text.isNotEmpty) {
-
                     final user = FirebaseAuth.instance.currentUser;
                     if (user == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,8 +117,8 @@ Future<void> showSleepTrackingDialog(
                         'sleepTime': sleepTimeController.text.trim(),
                         'wakeTime': wakeTimeController.text.trim(),
                         'sleepQuality': sleepQuality,
-                        'isTaskCompleted': true
-                        },
+                        'isTaskCompleted': true,
+                      },
                     };
 
                     try {
@@ -122,9 +128,7 @@ Future<void> showSleepTrackingDialog(
                       );
 
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('บันทึกข้อมูลการนอนสำเร็จ'),
-                        ),
+                        SnackBar(content: Text('บันทึกข้อมูลการนอนสำเร็จ')),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(

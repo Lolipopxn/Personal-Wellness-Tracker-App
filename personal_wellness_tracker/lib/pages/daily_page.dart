@@ -93,6 +93,42 @@ class _Daily extends State<DailyPage> {
     );
   }
 
+  Map<String, dynamic>? taskData;
+
+  Future<void> loadDailyTasks() async {
+    try {
+      final taskData = await _firestoreService.getDailyTask(DateTime.now());
+
+      if (taskData != null) {
+        setState(() {
+          isTask1 =
+              taskData.containsKey('exerciseId') &&
+              taskData['exerciseId']['isTaskCompleted'] == true;
+
+          isTask2 =
+              taskData.containsKey('waterTaskId') &&
+              taskData['waterTaskId']['isTaskCompleted'] == true;
+
+          isTask3 =
+              taskData.containsKey('sleepTaskId') &&
+              taskData['sleepTaskId']['isTaskCompleted'] == true;
+
+          isTask4 =
+              taskData.containsKey('MoodId') &&
+              taskData['MoodId']['isTaskCompleted'] == true;
+        });
+      }
+    } catch (e) {
+      print("เกิดข้อผิดพลาดในการโหลดข้อมูล: $e");
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadDailyTasks();
+  }
+
   @override
   void dispose() {
     _controller.dispose(); //clear data
@@ -181,14 +217,29 @@ class _Daily extends State<DailyPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         GestureDetector(
-                          onTap: () {
+                          onTap: () async {
+                            final taskData = await _firestoreService.getDailyTask(DateTime.now());
+
                             showDialog(
                               context: context,
                               builder: (context) {
-                                final nameController = TextEditingController();
+                                final exercise = taskData?['exerciseId'];
+                                final nameController = TextEditingController(
+                                  text: exercise != null
+                                      ? exercise['type']
+                                      : '',
+                                );
                                 final categoryController =
-                                    TextEditingController();
-                                final timeController = TextEditingController();
+                                    TextEditingController(
+                                      text: exercise != null
+                                          ? exercise['calories']
+                                          : '',
+                                    );
+                                final timeController = TextEditingController(
+                                  text: exercise != null
+                                      ? exercise['duration']
+                                      : '',
+                                );
                                 int hour = 0, minute = 0;
 
                                 return StatefulBuilder(
@@ -388,8 +439,9 @@ class _Daily extends State<DailyPage> {
                         ),
 
                         GestureDetector(
-                          onTap: () {
-                            final nameController = TextEditingController();
+                          onTap: () async{
+                            final taskData = await _firestoreService.getDailyTask(DateTime.now());
+                            final nameController = TextEditingController(text: taskData?['waterTaskId']?['total_drink'] ?? '');
 
                             showDialog(
                               context: context,
@@ -574,8 +626,7 @@ class _Daily extends State<DailyPage> {
                               context: context,
                               barrierDismissible: false,
                               builder: (context) {
-                                return MoodSelector(
-                                );
+                                return MoodSelector();
                               },
                             );
                           },

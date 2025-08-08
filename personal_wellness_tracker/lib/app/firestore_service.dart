@@ -115,16 +115,17 @@ class FirestoreService {
         .delete();
   }
 
-    Future<void> saveDailyTask(Map<String, dynamic> taskData, DateTime dateTime) async {
+  Future<void> saveDailyTask(
+    Map<String, dynamic> taskData,
+    DateTime dateTime,
+  ) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("No signed-in user");
 
-    final String date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+    final String date =
+        "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
 
-    final data = {
-      ...taskData,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
+    final data = {...taskData, 'updatedAt': FieldValue.serverTimestamp()};
 
     await _db
         .collection('users')
@@ -132,5 +133,26 @@ class FirestoreService {
         .collection('tasks_log')
         .doc(date)
         .set(data, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>?> getDailyTask(DateTime dateTime) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("No signed-in user");
+
+    final String date =
+        "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+
+    final docSnapshot = await _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('tasks_log')
+        .doc(date)
+        .get();
+
+    if (docSnapshot.exists) {
+      return docSnapshot.data();
+    } else {
+      return null;
+    }
   }
 }

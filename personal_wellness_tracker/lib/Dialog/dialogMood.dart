@@ -12,9 +12,34 @@ class MoodSelector extends StatefulWidget {
 
 class _MoodSelectorState extends State<MoodSelector> {
   final FirestoreService _firestoreService = FirestoreService();
+  final taskData = FirestoreService().getDailyTask(DateTime.now());
+
   String? selectedMood;
 
   final List<String> moods = ["😃", "😊", "😐", "😢", "😠"];
+
+  bool isLoading = true; // เพิ่มตัวแปรไว้รอโหลดข้อมูล
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreviousMood();
+  }
+
+  Future<void> _loadPreviousMood() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final taskData = await _firestoreService.getDailyTask(DateTime.now());
+    final moodData = taskData?['MoodId'] ?? {};
+
+    if (mounted) {
+      setState(() {
+        selectedMood = moodData['mood'];
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,13 +84,13 @@ class _MoodSelectorState extends State<MoodSelector> {
                 return;
               }
 
-              final exerciseData = {
+              final moodData = {
                 'MoodId': {'mood': selectedMood, 'isTaskCompleted': true},
               };
 
               try {
                 await _firestoreService.saveDailyTask(
-                  exerciseData,
+                  moodData,
                   DateTime.now(),
                 );
 
