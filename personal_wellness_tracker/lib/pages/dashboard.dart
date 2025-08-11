@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key, required this.onNavigate});
@@ -11,7 +11,7 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final OfflineDataService _offlineDataService = OfflineDataService();
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   String? _errorMessage;
@@ -19,15 +19,15 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    _fetchDashboardData();
   }
 
-  Future<void> _fetchUserData() async {
+  Future<void> _fetchDashboardData() async {
     try {
-      final data = await _firestoreService.getUserData();
+      final data = await _offlineDataService.getDashboardData();
       if (mounted) {
         setState(() {
-          _userData = data;
+          _userData = data['userProfile'];
           _isLoading = false;
         });
       }

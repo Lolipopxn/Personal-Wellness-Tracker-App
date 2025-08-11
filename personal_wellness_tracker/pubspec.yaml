@@ -44,6 +44,8 @@ dependencies:
   http: ^1.1.0
   fl_chart: ^0.68.0
   cloud_firestore: ^5.6.12
+  sqflite: ^2.3.0
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:

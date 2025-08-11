@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_wellness_tracker/%E0%B9%8CNavigationBar/main_scaffold.dart';
 import 'package:personal_wellness_tracker/app/auth_service.dart';
+import 'package:personal_wellness_tracker/services/sync_service.dart';
 // import 'package:personal_wellness_tracker/pages/profile_widget.dart';
 import 'package:personal_wellness_tracker/pages/register_page.dart';
 // import 'package:personal_wellness_tracker/pages/home.dart';
@@ -34,24 +35,91 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     try {
+      // 1. ลงชื่อเข้าใช้ Firebase
       await authService.value.signIn(
         email: controllerEmail.text.trim(),
         password: controllerPassword.text.trim(),
       );
 
       if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainScaffold()),
-          (route) => false,
+        // อัปเดต loading dialog เป็น sync message
+        Navigator.of(context).pop();
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('กำลังซิงค์ข้อมูลจาก Firebase...'),
+              ],
+            ),
+          ),
         );
+
+        // 2. ซิงค์ข้อมูลจาก Firebase ลง SQLite แบบสมบูรณ์
+        print('🔄 Starting comprehensive sync after login...');
+        final syncService = SyncService();
+        
+        try {
+          // ใช้ forceSyncFromFirestore เพื่อให้แน่ใจว่าข้อมูลทั้งหมดรวมถึง daily tasks จะถูก sync
+          await syncService.forceSyncFromFirestore();
+          print('✅ Comprehensive login sync completed successfully');
+          
+          if (context.mounted) {
+            // ปิด sync dialog
+            Navigator.of(context).pop();
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('เข้าสู่ระบบและซิงค์ข้อมูลสำเร็จ'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (syncError) {
+          print('⚠️ Login sync failed: $syncError');
+          
+          if (context.mounted) {
+            // ปิด sync dialog
+            Navigator.of(context).pop();
+            
+            // แสดง warning แต่ยังคงเข้าสู่แอป
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('การซิงค์ข้อมูลไม่สำเร็จ: $syncError\nแต่คุณยังสามารถใช้งานแอปได้'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+        
+        if (context.mounted) {
+          // 3. นำทางไปหน้าหลัก
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
+            (route) => false,
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       if (context.mounted) {
         Navigator.of(context).pop();
+        setState(() {
+          errorMessage = e.message ?? 'An unknown error occurred.';
+        });
       }
-      setState(() {
-        errorMessage = e.message ?? 'An unknown error occurred.';
-      });
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        setState(() {
+          errorMessage = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ: $e';
+        });
+      }
     }
   }
 

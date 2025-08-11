@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
 import 'package:personal_wellness_tracker/pages/home.dart';
 
 class Profile extends StatelessWidget {
@@ -22,7 +22,7 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final OfflineDataService _offlineDataService = OfflineDataService();
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
@@ -120,7 +120,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       };
 
       await user.updateDisplayName(_usernameController.text.trim());
-      await _firestoreService.saveUserProfile(userProfileData);
+      await _offlineDataService.saveUserProfile(userProfileData);
 
       if (mounted) Navigator.of(context).pop();
 

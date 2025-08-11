@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../app/firestore_service.dart';
+import '../services/sync_service.dart';
 
 import 'package:personal_wellness_tracker/pages/dashboard.dart';
 import 'package:personal_wellness_tracker/pages/daily_page.dart';
@@ -18,12 +19,14 @@ class _MainScaffoldState extends State<MainScaffold> {
   int currentIndex = 0;
 
   final FirestoreService _firestoreService = FirestoreService();
+  final SyncService _syncService = SyncService();
   Map<String, dynamic>? _userData;
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _performBackgroundSync(); // เพิ่มการ sync daily tasks
   }
 
   Future<void> _fetchUserData() async {
@@ -40,6 +43,21 @@ class _MainScaffoldState extends State<MainScaffold> {
           _userData = {};
         });
       }
+    }
+  }
+
+  // ทำการ sync ข้อมูล daily tasks เพื่อให้ข้อมูลเป็นปัจจุบัน
+  Future<void> _performBackgroundSync() async {
+    try {
+      print('🔄 Starting background sync for daily tasks in MainScaffold...');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _syncService.forceSyncFromFirestore();
+        print('✅ Background sync completed in MainScaffold');
+      }
+    } catch (e) {
+      print('⚠️ Background sync failed in MainScaffold: $e');
+      // ไม่แสดง error ให้ user เพราะเป็น background sync
     }
   }
 

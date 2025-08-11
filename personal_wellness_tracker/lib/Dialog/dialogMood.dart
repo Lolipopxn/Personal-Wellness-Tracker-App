@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
 
 class MoodSelector extends StatefulWidget {
   const MoodSelector({super.key});
@@ -11,8 +11,7 @@ class MoodSelector extends StatefulWidget {
 }
 
 class _MoodSelectorState extends State<MoodSelector> {
-  final FirestoreService _firestoreService = FirestoreService();
-  final taskData = FirestoreService().getDailyTask(DateTime.now());
+  final OfflineDataService _offlineDataService = OfflineDataService();
 
   String? selectedMood;
 
@@ -30,7 +29,7 @@ class _MoodSelectorState extends State<MoodSelector> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final taskData = await _firestoreService.getDailyTask(DateTime.now());
+    final taskData = await _offlineDataService.getDailyTask(DateTime.now());
     final moodData = taskData?['MoodId'] ?? {};
 
     if (mounted) {
@@ -89,7 +88,7 @@ class _MoodSelectorState extends State<MoodSelector> {
               };
 
               try {
-                await _firestoreService.saveDailyTask(
+                await _offlineDataService.saveDailyTask(
                   moodData,
                   DateTime.now(),
                 );

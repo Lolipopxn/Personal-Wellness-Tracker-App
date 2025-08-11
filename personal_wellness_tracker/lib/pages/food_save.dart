@@ -3,7 +3,8 @@ import 'dart:io';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import '../services/nutrition_service.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
+import '../services/sync_service.dart';
 import '../widgets/nutrition_chart.dart';
 import 'mock_api_manager_page.dart';
 
@@ -15,7 +16,8 @@ class FoodSavePage extends StatefulWidget {
 }
 
 class _FoodSavePageState extends State<FoodSavePage> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final OfflineDataService _offlineDataService = OfflineDataService();
+  final SyncService _syncService = SyncService();
 
   List<Map<String, dynamic>> _mealsForSelectedDate = [];
   bool _isLoading = true;
@@ -23,7 +25,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
   List<Map<String, dynamic>> get meals => _mealsForSelectedDate;
   int get totalCal => meals.fold(0, (sum, m) => sum + ((m['cal'] ?? 0) as int));
-  String _dateKey(DateTime date) => '${date.year}-${date.month}-${date.day}';
+  String _dateKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   @override
   void initState() {
@@ -37,13 +39,19 @@ class _FoodSavePageState extends State<FoodSavePage> {
     });
     try {
       final key = _dateKey(selectedDate);
-      final fetchedMeals = await _firestoreService.getFoodLogsForDate(key);
+      print('🍽️ Loading food logs for date: $key (${selectedDate.toString()})');
+      
+      final fetchedMeals = await _offlineDataService.getFoodLogsForDate(key);
+      print('🍽️ Loaded ${fetchedMeals.length} meals from service');
+      
       if (mounted) {
         setState(() {
           _mealsForSelectedDate = fetchedMeals;
         });
+        print('🍽️ Updated UI with ${fetchedMeals.length} meals');
       }
     } catch (e) {
+      print('❌ Error loading food logs: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('เกิดข้อผิดพลาดในการโหลดข้อมูล: $e')),
@@ -80,7 +88,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
     if (confirm ?? false) {
       try {
-        await _firestoreService.deleteFoodLog(
+        await _offlineDataService.deleteFoodLog(
           date: _dateKey(selectedDate),
           mealId: mealId,
         );
@@ -396,13 +404,13 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
                                   try {
                                     if (meal?['id'] != null) {
-                                      await _firestoreService.updateFoodLog(
+                                      await _offlineDataService.updateFoodLog(
                                         date: _dateKey(selectedDate),
                                         mealId: meal!['id'],
                                         mealData: mealData,
                                       );
                                     } else {
-                                      await _firestoreService.addFoodLog(
+                                      await _offlineDataService.addFoodLog(
                                         date: _dateKey(selectedDate),
                                         mealData: mealData,
                                       );
@@ -500,6 +508,29 @@ class _FoodSavePageState extends State<FoodSavePage> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.orange, size: 24),
+            onPressed: () async {
+              try {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('กำลัง sync ข้อมูลจาก Firebase...')),
+                );
+                await _syncService.forceSyncFromFirestore();
+                _loadFoodLogs();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Sync เสร็จสิ้น'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Sync ล้มเหลว: $e')),
+                );
+              }
+            },
+            tooltip: 'Force Sync from Firebase',
+          ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.blue, size: 24),
             onPressed: () {

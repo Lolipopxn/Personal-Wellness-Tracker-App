@@ -5,7 +5,8 @@ import 'package:personal_wellness_tracker/Dialog/sleepDialog.dart';
 import 'package:personal_wellness_tracker/Dialog/activityDialog.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
+import '../services/sync_service.dart';
 
 class DailyPage extends StatefulWidget {
   const DailyPage({super.key});
@@ -17,7 +18,8 @@ class DailyPage extends StatefulWidget {
 class _Daily extends State<DailyPage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final FirestoreService _firestoreService = FirestoreService();
+  final OfflineDataService _offlineDataService = OfflineDataService();
+  final SyncService _syncService = SyncService();
 
   bool isTask1 = false;
   bool isTask2 = false;
@@ -97,29 +99,73 @@ class _Daily extends State<DailyPage> {
 
   Future<void> loadDailyTasks() async {
     try {
-      final taskData = await _firestoreService.getDailyTask(DateTime.now());
+      final currentDate = DateTime.now();
+      final dateString = '${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}';
+      
+      print('📋 Loading daily tasks for date: $dateString (${currentDate.toString()})');
+      
+      final taskData = await _offlineDataService.getDailyTask(DateTime.now());
+      
+      print('📋 Raw task data from database: $taskData');
 
       if (taskData != null) {
+        print('📋 Task data found! Parsing individual tasks...');
+        
+        // Check Exercise Task
+        bool exerciseCompleted = taskData.containsKey('exerciseId') && 
+                                taskData['exerciseId']['isTaskCompleted'] == true;
+        print('🏃 Exercise Task: ${taskData.containsKey('exerciseId') ? "Found" : "Not found"}');
+        if (taskData.containsKey('exerciseId')) {
+          print('   - Exercise data: ${taskData['exerciseId']}');
+          print('   - Is completed: $exerciseCompleted');
+        }
+        
+        // Check Water Task  
+        bool waterCompleted = taskData.containsKey('waterTaskId') && 
+                             taskData['waterTaskId']['isTaskCompleted'] == true;
+        print('💧 Water Task: ${taskData.containsKey('waterTaskId') ? "Found" : "Not found"}');
+        if (taskData.containsKey('waterTaskId')) {
+          print('   - Water data: ${taskData['waterTaskId']}');
+          print('   - Is completed: $waterCompleted');
+        }
+        
+        // Check Sleep Task
+        bool sleepCompleted = taskData.containsKey('sleepTaskId') && 
+                             taskData['sleepTaskId']['isTaskCompleted'] == true;
+        print('😴 Sleep Task: ${taskData.containsKey('sleepTaskId') ? "Found" : "Not found"}');
+        if (taskData.containsKey('sleepTaskId')) {
+          print('   - Sleep data: ${taskData['sleepTaskId']}');
+          print('   - Is completed: $sleepCompleted');
+        }
+        
+        // Check Mood Task
+        bool moodCompleted = taskData.containsKey('MoodId') && 
+                            taskData['MoodId']['isTaskCompleted'] == true;
+        print('😊 Mood Task: ${taskData.containsKey('MoodId') ? "Found" : "Not found"}');
+        if (taskData.containsKey('MoodId')) {
+          print('   - Mood data: ${taskData['MoodId']}');
+          print('   - Is completed: $moodCompleted');
+        }
+        
         setState(() {
-          isTask1 =
-              taskData.containsKey('exerciseId') &&
-              taskData['exerciseId']['isTaskCompleted'] == true;
-
-          isTask2 =
-              taskData.containsKey('waterTaskId') &&
-              taskData['waterTaskId']['isTaskCompleted'] == true;
-
-          isTask3 =
-              taskData.containsKey('sleepTaskId') &&
-              taskData['sleepTaskId']['isTaskCompleted'] == true;
-
-          isTask4 =
-              taskData.containsKey('MoodId') &&
-              taskData['MoodId']['isTaskCompleted'] == true;
+          isTask1 = exerciseCompleted;
+          isTask2 = waterCompleted;
+          isTask3 = sleepCompleted;
+          isTask4 = moodCompleted;
+        });
+        
+        print('📋 Final task states: Exercise=$isTask1, Water=$isTask2, Sleep=$isTask3, Mood=$isTask4');
+      } else {
+        print('📋 No task data found for today');
+        setState(() {
+          isTask1 = false;
+          isTask2 = false;
+          isTask3 = false;
+          isTask4 = false;
         });
       }
     } catch (e) {
-      print("เกิดข้อผิดพลาดในการโหลดข้อมูล: $e");
+      print("❌ Error loading daily tasks: $e");
     }
   }
 
@@ -127,6 +173,26 @@ class _Daily extends State<DailyPage> {
   void initState() {
     super.initState();
     loadDailyTasks();
+    // เพิ่มการ sync ข้อมูลเมื่อเปิดหน้า
+    _syncDataFromFirebase();
+  }
+
+  Future<void> _syncDataFromFirebase() async {
+    try {
+      // ใช้ SyncService เพื่อ sync ข้อมูลจาก Firebase
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('🔄 Starting sync from Firebase...');
+        await _syncService.forceSyncFromFirestore();
+        print('✅ Sync completed, reloading data...');
+        // รอสักครู่แล้ว reload ข้อมูล
+        Future.delayed(Duration(seconds: 1), () {
+          loadDailyTasks();
+        });
+      }
+    } catch (e) {
+      print('❌ Sync error: $e');
+    }
   }
 
   @override
@@ -218,7 +284,7 @@ class _Daily extends State<DailyPage> {
                       children: [
                         GestureDetector(
                           onTap: () async {
-                            final taskData = await _firestoreService.getDailyTask(DateTime.now());
+                            final taskData = await _offlineDataService.getDailyTask(DateTime.now());
 
                             showDialog(
                               context: context,
@@ -364,7 +430,7 @@ class _Daily extends State<DailyPage> {
                                               };
 
                                               try {
-                                                await _firestoreService
+                                                await _offlineDataService
                                                     .saveDailyTask(
                                                       exerciseData,
                                                       DateTime.now(),
@@ -440,7 +506,7 @@ class _Daily extends State<DailyPage> {
 
                         GestureDetector(
                           onTap: () async{
-                            final taskData = await _firestoreService.getDailyTask(DateTime.now());
+                            final taskData = await _offlineDataService.getDailyTask(DateTime.now());
                             final nameController = TextEditingController(text: taskData?['waterTaskId']?['total_drink'] ?? '');
 
                             showDialog(
@@ -516,7 +582,7 @@ class _Daily extends State<DailyPage> {
                                               };
 
                                               try {
-                                                await _firestoreService
+                                                await _offlineDataService
                                                     .saveDailyTask(
                                                       waterData,
                                                       DateTime.now(),

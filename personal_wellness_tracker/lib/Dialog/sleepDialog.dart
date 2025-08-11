@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
 
 Future<void> showSleepTrackingDialog(
   BuildContext context, {
   required void Function() onConfirmed,
 }) async {
-  final FirestoreService _firestoreService = FirestoreService();
-  final taskData = await _firestoreService.getDailyTask(DateTime.now());
+  final OfflineDataService _offlineDataService = OfflineDataService();
+  final taskData = await _offlineDataService.getDailyTask(DateTime.now());
 
   final sleepTimeController = TextEditingController(
     text: taskData?['sleepTaskId']?['sleepTime'] ?? '',
@@ -122,7 +122,7 @@ Future<void> showSleepTrackingDialog(
                     };
 
                     try {
-                      await _firestoreService.saveDailyTask(
+                      await _offlineDataService.saveDailyTask(
                         exerciseData,
                         DateTime.now(),
                       );

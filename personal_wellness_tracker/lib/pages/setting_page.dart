@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart'; // Import your main.dart to access ThemeProvider
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -13,7 +13,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final OfflineDataService _offlineDataService = OfflineDataService();
   User? _user;
   Map<String, dynamic>? _firestoreUserData;
   bool _isLoading = true;
@@ -34,7 +34,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_user != null) {
       await _user?.reload();
       _user = FirebaseAuth.instance.currentUser;
-      _firestoreUserData = await _firestoreService.getUserData();
+      _firestoreUserData = await _offlineDataService.getUserProfile();
     }
 
     if (mounted) {
@@ -132,7 +132,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 );
                                 try {
                                   await _user?.updateDisplayName(newUsername);
-                                  await _firestoreService.updateUserData({
+                                  await _offlineDataService.updateUserProfile({
                                     'username': newUsername,
                                   });
                                   await _loadAllUserData();

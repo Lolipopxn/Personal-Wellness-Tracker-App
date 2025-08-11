@@ -1,8 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/offline_data_service.dart';
 
 class ActivitySection extends StatefulWidget {
   const ActivitySection({super.key});
@@ -13,16 +12,16 @@ class ActivitySection extends StatefulWidget {
 
 class _ActivitySectionState extends State<ActivitySection> {
   List<String> activities = [];
-  final FirestoreService _firestoreService = FirestoreService();
+  final OfflineDataService _offlineDataService = OfflineDataService();
 
   @override
   void initState() {
     super.initState();
-    _loadActivitiesFromFirestore();
+    _loadActivitiesFromSQLite();
   }
 
-  Future<void> _loadActivitiesFromFirestore() async {
-    final task = await _firestoreService.getDailyTask(DateTime.now());
+  Future<void> _loadActivitiesFromSQLite() async {
+    final task = await _offlineDataService.getDailyTask(DateTime.now());
     if (task != null && task['activities'] != null) {
       final List<dynamic> rawActivities = task['activities'];
       final List<String> loaded = rawActivities
@@ -68,17 +67,24 @@ class _ActivitySectionState extends State<ActivitySection> {
                   return;
                 }
 
+                // ดึงข้อมูล activities เดิมมาก่อน
+                final currentTask = await _offlineDataService.getDailyTask(DateTime.now());
+                final currentActivities = currentTask?['activities'] as List<dynamic>? ?? [];
+                
+                // เพิ่ม activity ใหม่
                 final newActivity = {
                   'activity': newActivityText,
                   'isTaskCompleted': true,
                 };
-
+                
+                currentActivities.add(newActivity);
+                
                 final exerciseData = {
-                  'activities': FieldValue.arrayUnion([newActivity]),
+                  'activities': currentActivities,
                 };
 
                 try {
-                  await _firestoreService.saveDailyTask(
+                  await _offlineDataService.saveDailyTask(
                     exerciseData,
                     DateTime.now(),
                   );
@@ -176,16 +182,20 @@ class _ActivitySectionState extends State<ActivitySection> {
                               final user = FirebaseAuth.instance.currentUser;
                               if (user == null) return;
 
-                              final activityToRemove = {
-                                'activity': activity,
-                                'isTaskCompleted': true,
-                              };
-
                               try {
-                                await _firestoreService.saveDailyTask({
-                                  'activities': FieldValue.arrayRemove([
-                                    activityToRemove,
-                                  ]),
+                                // ดึงข้อมูล activities ปัจจุบัน
+                                final currentTask = await _offlineDataService.getDailyTask(DateTime.now());
+                                final currentActivities = currentTask?['activities'] as List<dynamic>? ?? [];
+                                
+                                // ลบ activity ที่เลือก
+                                currentActivities.removeWhere((item) => 
+                                  item['activity'] == activity && 
+                                  item['isTaskCompleted'] == true
+                                );
+                                
+                                // บันทึกข้อมูลที่อัปเดตแล้ว
+                                await _offlineDataService.saveDailyTask({
+                                  'activities': currentActivities,
                                 }, DateTime.now());
 
                                 setState(() {
