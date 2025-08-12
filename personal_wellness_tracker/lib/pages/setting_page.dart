@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart'; // Import your main.dart to access ThemeProvider
 import '../app/firestore_service.dart';
+import '../app/notification_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -23,6 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadAllUserData();
+    _loadNotificationSetting();
   }
 
   Future<void> _loadAllUserData() async {
@@ -47,6 +49,14 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _saveDarkModePreference(bool value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isDarkMode', value);
+  }
+
+  Future<void> _loadNotificationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool savedValue = prefs.getBool('notificationsEnabled') ?? true;
+    setState(() {
+      notificationsEnabled = savedValue;
+    });
   }
 
   @override
@@ -170,8 +180,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: const Text("เปิดการแจ้งเตือน"),
                 activeColor: const Color(0xFF4DA1A9),
                 value: notificationsEnabled,
-                onChanged: (val) {
+                onChanged: (val) async {
                   setState(() => notificationsEnabled = val);
+
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('notificationsEnabled', val);
+                  await initNotificationService();
                 },
               ),
               const Divider(),
@@ -187,117 +201,122 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: const Text("เปลี่ยนรหัสผ่าน"),
                 onTap: () {
                   final currentPasswordController = TextEditingController();
-                final newPasswordController = TextEditingController();
+                  final newPasswordController = TextEditingController();
 
-                String? currentPasswordError;
-                String? newPasswordError;
+                  String? currentPasswordError;
+                  String? newPasswordError;
 
-                showDialog(
-                  context: context,
-                  builder: (_) {
-                    return StatefulBuilder(
-                      builder: (context, setState) {
-                        return AlertDialog(
-                          title: const Text("เปลี่ยนรหัสผ่าน"),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextField(
-                                controller: currentPasswordController,
-                                decoration: InputDecoration(
-                                  labelText: "รหัสผ่านปัจจุบัน",
-                                  errorText: currentPasswordError,
+                  showDialog(
+                    context: context,
+                    builder: (_) {
+                      return StatefulBuilder(
+                        builder: (context, setState) {
+                          return AlertDialog(
+                            title: const Text("เปลี่ยนรหัสผ่าน"),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextField(
+                                  controller: currentPasswordController,
+                                  decoration: InputDecoration(
+                                    labelText: "รหัสผ่านปัจจุบัน",
+                                    errorText: currentPasswordError,
+                                  ),
+                                  obscureText: true,
                                 ),
-                                obscureText: true,
+                                TextField(
+                                  controller: newPasswordController,
+                                  decoration: InputDecoration(
+                                    labelText: "รหัสผ่านใหม่",
+                                    errorText: newPasswordError,
+                                  ),
+                                  obscureText: true,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("ยกเลิก"),
                               ),
-                              TextField(
-                                controller: newPasswordController,
-                                decoration: InputDecoration(
-                                  labelText: "รหัสผ่านใหม่",
-                                  errorText: newPasswordError,
-                                ),
-                                obscureText: true,
+                              TextButton(
+                                onPressed: () async {
+                                  final currentPassword =
+                                      currentPasswordController.text;
+                                  final newPassword =
+                                      newPasswordController.text;
+
+                                  setState(() {
+                                    currentPasswordError = null;
+                                    newPasswordError = null;
+                                  });
+
+                                  if (currentPassword.isEmpty ||
+                                      newPassword.isEmpty) {
+                                    setState(() {
+                                      if (currentPassword.isEmpty) {
+                                        currentPasswordError =
+                                            "กรุณากรอกรหัสผ่านปัจจุบัน";
+                                      }
+                                      if (newPassword.isEmpty) {
+                                        newPasswordError =
+                                            "กรุณากรอกรหัสผ่านใหม่";
+                                      }
+                                    });
+                                    return;
+                                  }
+
+                                  try {
+                                    final user =
+                                        FirebaseAuth.instance.currentUser;
+                                    final cred = EmailAuthProvider.credential(
+                                      email: user!.email!,
+                                      password: currentPassword,
+                                    );
+                                    await user.reauthenticateWithCredential(
+                                      cred,
+                                    );
+
+                                    await user.updatePassword(newPassword);
+
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
+                                      ),
+                                    );
+
+                                    await FirebaseAuth.instance.signOut();
+
+                                    if (!mounted) return;
+                                    Navigator.of(
+                                      context,
+                                    ).pushNamedAndRemoveUntil(
+                                      '/login',
+                                      (route) => false,
+                                    );
+                                  } on FirebaseAuthException catch (e) {
+                                    setState(() {
+                                      if (e.code == 'wrong-password' ||
+                                          e.code == 'user-mismatch' ||
+                                          e.code == 'invalid-credential') {
+                                        currentPasswordError =
+                                            "รหัสผ่านปัจจุบันไม่ถูกต้อง";
+                                      } else if (e.code == 'weak-password') {
+                                        newPasswordError =
+                                            "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
+                                      }
+                                    });
+                                  }
+                                },
+                                child: const Text("บันทึก"),
                               ),
                             ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text("ยกเลิก"),
-                            ),
-                            TextButton(
-                              onPressed: () async {
-                                final currentPassword =
-                                    currentPasswordController.text;
-                                final newPassword = newPasswordController.text;
-
-                                setState(() {
-                                  currentPasswordError = null;
-                                  newPasswordError = null;
-                                });
-
-                                if (currentPassword.isEmpty ||
-                                    newPassword.isEmpty) {
-                                  setState(() {
-                                    if (currentPassword.isEmpty) {
-                                      currentPasswordError =
-                                          "กรุณากรอกรหัสผ่านปัจจุบัน";
-                                    }
-                                    if (newPassword.isEmpty) {
-                                      newPasswordError =
-                                          "กรุณากรอกรหัสผ่านใหม่";
-                                    }
-                                  });
-                                  return;
-                                }
-
-                                try {
-                                  final user =
-                                      FirebaseAuth.instance.currentUser;
-                                  final cred = EmailAuthProvider.credential(
-                                    email: user!.email!,
-                                    password: currentPassword,
-                                  );
-                                  await user.reauthenticateWithCredential(cred);
-
-                                  await user.updatePassword(newPassword);
-
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
-                                    ),
-                                  );
-
-                                  await FirebaseAuth.instance.signOut();
-
-                                  if (!mounted) return;
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                    '/login',
-                                    (route) => false,
-                                  );
-                                } on FirebaseAuthException catch (e) {
-                                  setState(() {
-                                    if (e.code == 'wrong-password' ||
-                                        e.code == 'user-mismatch' ||
-                                        e.code == 'invalid-credential') {
-                                      currentPasswordError =
-                                          "รหัสผ่านปัจจุบันไม่ถูกต้อง";
-                                    } else if (e.code == 'weak-password') {
-                                      newPasswordError =
-                                          "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
-                                    }
-                                  });
-                                }
-                              },
-                              child: const Text("บันทึก"),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
+                          );
+                        },
+                      );
+                    },
+                  );
                 },
               ),
               const Divider(),
