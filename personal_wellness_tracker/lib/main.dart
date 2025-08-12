@@ -6,14 +6,18 @@ import 'pages/profile.dart';
 // import 'pages/dashboard.dart';
 import 'pages/daily_page.dart';
 import 'pages/setting_page.dart';
+import 'pages/all_logs_page.dart';
 import 'package:personal_wellness_tracker/์NavigationBar/main_scaffold.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'app/notification_service.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
@@ -45,6 +49,9 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.loadThemeFromPrefs();
 
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await initNotificationService();
+
   runApp(
     ChangeNotifierProvider(
       create: (context) => themeProvider,
@@ -73,6 +80,10 @@ class MyApp extends StatelessWidget {
               unselectedItemColor: Colors.black, // Unselected item color
               backgroundColor: Colors.white, 
             ),
+
+            cardTheme: CardThemeData(
+              color: Colors.white, // Dark card color
+            ), // Dark card color
 
           ),
           darkTheme: ThemeData(
@@ -116,6 +127,7 @@ class MyApp extends StatelessWidget {
             '/food_save': (context) => FoodSavePage(),
             '/daily': (context) => DailyPage(),
             '/settings': (context) => SettingsPage(),
+            '/all_logs': (context) => LogsScreen(),
           },
         );
       },
