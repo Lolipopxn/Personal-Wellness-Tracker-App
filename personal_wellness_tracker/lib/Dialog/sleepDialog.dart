@@ -130,6 +130,9 @@ Future<void> showSleepTrackingDialog(
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('บันทึกข้อมูลการนอนสำเร็จ')),
                       );
+                      
+                      onConfirmed();
+
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),

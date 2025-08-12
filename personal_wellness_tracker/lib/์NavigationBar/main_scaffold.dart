@@ -4,8 +4,9 @@ import '../app/firestore_service.dart';
 
 import 'package:personal_wellness_tracker/pages/dashboard.dart';
 import 'package:personal_wellness_tracker/pages/daily_page.dart';
-import 'package:personal_wellness_tracker/pages/setting_page.dart';
 import 'package:personal_wellness_tracker/pages/food_save.dart';
+import 'package:personal_wellness_tracker/pages/myProfile_page.dart';
+import 'package:personal_wellness_tracker/pages/statistics_page.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -68,8 +69,8 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       const DailyPage(),
       const FoodSavePage(),
-      const SettingsPage(),
-      const SettingsPage(),
+      const StatisticsPage(),
+      const UserProfilePage(),
     ];
 
     return Scaffold(
@@ -91,10 +92,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           ],
         ),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black),
-            onPressed: () {},
-          ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.black),
             onPressed: () {

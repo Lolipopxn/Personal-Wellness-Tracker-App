@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../app/firestore_service.dart';
 
 class MoodSelector extends StatefulWidget {
-  const MoodSelector({super.key});
+  final VoidCallback onConfirmed;
+
+  const MoodSelector({super.key, required this.onConfirmed});
 
   @override
   _MoodSelectorState createState() => _MoodSelectorState();
@@ -97,6 +99,8 @@ class _MoodSelectorState extends State<MoodSelector> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('บันทึกข้อมูลอารมณ์สำเร็จ')),
                 );
+
+                widget.onConfirmed();
               } catch (e) {
                 ScaffoldMessenger.of(
                   context,

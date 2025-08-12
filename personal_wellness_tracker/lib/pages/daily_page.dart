@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import 'package:personal_wellness_tracker/Dialog/dialogMood.dart';
 import 'package:personal_wellness_tracker/Dialog/sleepDialog.dart';
 import 'package:personal_wellness_tracker/Dialog/activityDialog.dart';
@@ -23,6 +24,9 @@ class _Daily extends State<DailyPage> {
   bool isTask2 = false;
   bool isTask3 = false;
   bool isTask4 = false;
+
+  late Timer _timer;
+  late DateTime _now;
 
   Widget _buildDurationPicker(
     int selectedHour,
@@ -127,21 +131,29 @@ class _Daily extends State<DailyPage> {
   void initState() {
     super.initState();
     loadDailyTasks();
+    _now = DateTime.now();
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _now = DateTime.now();
+      });
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose(); //clear data
     _focusNode.dispose(); //clear focus
+    _timer.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     String currentDate = DateFormat(
-      'dd MMMM yyyy',
+      'dd MMMM yyyy ( HH:mm:ss )',
       'th',
-    ).format(DateTime.now());
+    ).format(_now);
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.zero,
@@ -218,7 +230,8 @@ class _Daily extends State<DailyPage> {
                       children: [
                         GestureDetector(
                           onTap: () async {
-                            final taskData = await _firestoreService.getDailyTask(DateTime.now());
+                            final taskData = await _firestoreService
+                                .getDailyTask(DateTime.now());
 
                             showDialog(
                               context: context,
@@ -439,9 +452,14 @@ class _Daily extends State<DailyPage> {
                         ),
 
                         GestureDetector(
-                          onTap: () async{
-                            final taskData = await _firestoreService.getDailyTask(DateTime.now());
-                            final nameController = TextEditingController(text: taskData?['waterTaskId']?['total_drink'] ?? '');
+                          onTap: () async {
+                            final taskData = await _firestoreService
+                                .getDailyTask(DateTime.now());
+                            final nameController = TextEditingController(
+                              text:
+                                  taskData?['waterTaskId']?['total_drink'] ??
+                                  '',
+                            );
 
                             showDialog(
                               context: context,
@@ -626,7 +644,15 @@ class _Daily extends State<DailyPage> {
                               context: context,
                               barrierDismissible: false,
                               builder: (context) {
-                                return MoodSelector();
+                                return MoodSelector(
+                                  onConfirmed: () {
+                                    if (mounted) {
+                                      setState(() {
+                                        isTask4 = true;
+                                      });
+                                    }
+                                  },
+                                );
                               },
                             );
                           },
