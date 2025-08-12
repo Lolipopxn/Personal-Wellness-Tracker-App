@@ -15,11 +15,16 @@ class _DashboardState extends State<Dashboard> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   String? _errorMessage;
+  int savedDays = 0;
+  int totalDays = 7;
+  String mood = "N/A";
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    loadData();
+    loadDailyTasks();
   }
 
   Future<void> _fetchUserData() async {
@@ -38,6 +43,39 @@ class _DashboardState extends State<Dashboard> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void updateGoal(int days) {
+  List<int> goals = [7, 14, 30, 60, 90, 180, 365];
+  for (int g in goals) {
+    if (days < g) {
+      totalDays = g;
+      return;
+    }
+  }
+  totalDays = days + 30;
+}
+
+  Future<void> loadData() async {
+    int count = await _firestoreService.getStreakCount();
+    setState(() {
+      savedDays = count;
+      updateGoal(count);
+    });
+  }
+
+  Future<void> loadDailyTasks() async {
+    try {
+      final taskData = await _firestoreService.getDailyTask(DateTime.now());
+
+      if (taskData != null) {
+        setState(() {
+          mood = taskData["MoodId"]["mood"] ?? 'N/A';
+        });
+      }
+    } catch (e) {
+      print("เกิดข้อผิดพลาดในการโหลดข้อมูล: $e");
     }
   }
 
@@ -74,16 +112,17 @@ class _DashboardState extends State<Dashboard> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: Color(0xFF79D7BE),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey, width: 1.5)
             ),
-            child: Icon(icon, size: isTablet ? 50 : 40, color: Color(0xFF79D7BE)),
+            child: Icon(icon, size: isTablet ? 50 : 40, color: Colors.white),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: isTablet ? 14 : 12),
+            style: TextStyle(fontSize: isTablet ? 16 : 14),
           ),
         ],
       ),
@@ -179,13 +218,13 @@ class _DashboardState extends State<Dashboard> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text('บันทึกมาแล้ว (7 วัน)', style: TextStyle(fontSize: 14)),
+            Text('บันทึกมาแล้ว ($savedDays วัน) 🔥', style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
                 Expanded(
                   child: LinearProgressIndicator(
-                    value: 7 / 14,
+                    value: savedDays / totalDays,
                     backgroundColor: Colors.grey[300],
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Colors.blue,
@@ -195,7 +234,7 @@ class _DashboardState extends State<Dashboard> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text('14 วัน', style: TextStyle(fontSize: 14)),
+                Text('$totalDays วัน', style: const TextStyle(fontSize: 14)),
               ],
             ),
             const SizedBox(height: 30),
@@ -227,7 +266,7 @@ class _DashboardState extends State<Dashboard> {
                   _buildDailyTaskItem(
                     icon: Icons.bar_chart,
                     label: 'ผลความก้าวหน้า',
-                    onTap: () {},
+                    onTap: () {Navigator.pushNamed(context, '/all_logs');},
                     isTablet: isTablet,
                   ),
                 ],
@@ -284,7 +323,7 @@ class _DashboardState extends State<Dashboard> {
                         label: "อาหาร",
                         value: "2000 kcal",
                       ),
-                      _buildHealthMetricItem(label: "อารมณ์", value: "😊😊😊"),
+                      _buildHealthMetricItem(label: "อารมณ์", value: mood),
                     ],
                   ),
                   const SizedBox(height: 20),
