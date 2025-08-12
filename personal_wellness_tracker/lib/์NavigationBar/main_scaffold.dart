@@ -26,7 +26,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   void initState() {
     super.initState();
     _fetchUserData();
-    _performBackgroundSync(); // เพิ่มการ sync daily tasks
+    _performBackgroundSync();
   }
 
   Future<void> _fetchUserData() async {
@@ -46,7 +46,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
-  // ทำการ sync ข้อมูล daily tasks เพื่อให้ข้อมูลเป็นปัจจุบัน
   Future<void> _performBackgroundSync() async {
     try {
       print('🔄 Starting background sync for daily tasks in MainScaffold...');
@@ -57,7 +56,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       }
     } catch (e) {
       print('⚠️ Background sync failed in MainScaffold: $e');
-      // ไม่แสดง error ให้ user เพราะเป็น background sync
     }
   }
 
@@ -76,18 +74,22 @@ class _MainScaffoldState extends State<MainScaffold> {
           _userData!['username'] ?? user?.displayName ?? user?.email ?? 'User';
     }
 
+    // NOTE:
+    // เดิมของคุณมี SettingsPage ซ้ำ 2 ครั้งใน pages (index 3 และ 4)
+    // ตรง "สถิติ" (index 3) ถ้ายังไม่มีหน้า ให้ใส่ Placeholder ไว้ชั่วคราว
     final List<Widget> pages = [
       Dashboard(
+        key: const PageStorageKey('dashboard'),
         onNavigate: (int index) {
           setState(() {
             currentIndex = index;
           });
         },
       ),
-      const DailyPage(),
-      const FoodSavePage(),
-      const SettingsPage(),
-      const SettingsPage(),
+      const DailyPage(key: PageStorageKey('daily')),
+      const FoodSavePage(key: PageStorageKey('food_save')),
+      const _StatsPlaceholder(key: PageStorageKey('stats_placeholder')),
+      const SettingsPage(key: PageStorageKey('settings')),
     ];
 
     return Scaffold(
@@ -116,12 +118,19 @@ class _MainScaffoldState extends State<MainScaffold> {
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.black),
             onPressed: () {
-              Navigator.pushNamed(context, '/settings');
+              // ❌ ห้าม pushNamed('/settings') เพราะจะสร้างหน้าซ้ำและรีเซ็ต state
+              // ✅ สลับแท็บไป index 4 (Settings) แทน
+              setState(() {
+                currentIndex = 4;
+              });
             },
           ),
         ],
       ),
-      body: pages[currentIndex],
+
+      // ✅ ใช้ IndexedStack เพื่อคง state ของทุกหน้า
+      body: IndexedStack(index: currentIndex, children: pages),
+
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.only(
@@ -151,10 +160,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           child: SizedBox(
             height: 110,
             child: Theme(
-              data: Theme.of(context).copyWith(
-                splashColor: Colors.transparent,
-                // highlightColor: Colors.transparent,
-              ),
+              data: Theme.of(context).copyWith(splashColor: Colors.transparent),
               child: BottomNavigationBar(
                 type: BottomNavigationBarType.fixed,
                 backgroundColor:
@@ -204,5 +210,15 @@ class _MainScaffoldState extends State<MainScaffold> {
         ),
       ),
     );
+  }
+}
+
+/// หน้า placeholder สำหรับแท็บ "สถิติ" ชั่วคราว
+class _StatsPlaceholder extends StatelessWidget {
+  const _StatsPlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text('กราฟ/สถิติ จะมาอยู่ที่นี่'));
   }
 }

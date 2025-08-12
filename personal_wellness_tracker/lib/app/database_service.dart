@@ -18,7 +18,7 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), 'wellness_tracker.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
     );
@@ -44,7 +44,8 @@ class DatabaseService {
         health_problems TEXT,
         profile_completed INTEGER DEFAULT 0,
         created_at TEXT,
-        updated_at TEXT
+        updated_at TEXT,
+        is_synced INTEGER DEFAULT 1 -- ADDED: 1=true (synced), 0=false (not synced)
       )
     ''');
 
@@ -133,23 +134,45 @@ class DatabaseService {
     ''');
 
     // Create indexes for better performance
-    await db.execute('CREATE INDEX idx_food_logs_uid_date ON food_logs(uid, date)');
-    await db.execute('CREATE INDEX idx_daily_tasks_uid_date ON daily_tasks(uid, date)');
-    await db.execute('CREATE INDEX idx_exercise_logs_uid_date ON exercise_logs(uid, date)');
-    await db.execute('CREATE INDEX idx_water_logs_uid_date ON water_logs(uid, date)');
-    await db.execute('CREATE INDEX idx_sleep_logs_uid_date ON sleep_logs(uid, date)');
-    await db.execute('CREATE INDEX idx_mood_logs_uid_date ON mood_logs(uid, date)');
+    await db.execute(
+      'CREATE INDEX idx_food_logs_uid_date ON food_logs(uid, date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_daily_tasks_uid_date ON daily_tasks(uid, date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_exercise_logs_uid_date ON exercise_logs(uid, date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_water_logs_uid_date ON water_logs(uid, date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sleep_logs_uid_date ON sleep_logs(uid, date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_mood_logs_uid_date ON mood_logs(uid, date)',
+    );
   }
 
-  Future<void> _upgradeDatabase(Database db, int oldVersion, int newVersion) async {
-    // Handle database upgrades here if needed in the future
+  Future<void> _upgradeDatabase(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    print("Upgrading database from version $oldVersion to $newVersion");
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE user_profiles ADD COLUMN is_synced INTEGER DEFAULT 1',
+      );
+      print("✅ Column 'is_synced' added to user_profiles table.");
+    }
   }
 
   // User Profile Methods
   Future<void> saveUserProfile(Map<String, dynamic> userProfileData) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    
+
     final data = {
       'uid': userProfileData['uid'],
       'username': userProfileData['username'],
@@ -163,7 +186,9 @@ class DatabaseService {
       'goal_water_intake': userProfileData['goals']?['waterIntake'],
       'blood_pressure': userProfileData['healthInfo']?['bloodPressure'],
       'heart_rate': userProfileData['healthInfo']?['heartRate'],
-      'health_problems': userProfileData['healthInfo']?['healthProblems']?.join(','),
+      'health_problems': userProfileData['healthInfo']?['healthProblems']?.join(
+        ',',
+      ),
       'profile_completed': userProfileData['profileCompleted'] == true ? 1 : 0,
       'created_at': now,
       'updated_at': now,
@@ -202,7 +227,8 @@ class DatabaseService {
         'healthInfo': {
           'bloodPressure': data['blood_pressure'],
           'heartRate': data['heart_rate'],
-          'healthProblems': (data['health_problems'] as String?)?.split(',') ?? [],
+          'healthProblems':
+              (data['health_problems'] as String?)?.split(',') ?? [],
         },
         'profileCompleted': data['profile_completed'] == 1,
         'createdAt': data['created_at'],
@@ -212,16 +238,34 @@ class DatabaseService {
     return null;
   }
 
-  Future<void> updateUserProfile(String uid, Map<String, dynamic> updates) async {
+  Future<void> updateUserProfile(
+    String uid,
+    Map<String, dynamic> updates,
+  ) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    
+
     final data = Map<String, dynamic>.from(updates);
     data['updated_at'] = now;
+    data['is_synced'] = 0;
 
+    await db.update('user_profiles', data, where: 'uid = ?', whereArgs: [uid]);
+  }
+
+  Future<List<Map<String, dynamic>>> getUnsyncedUserProfiles() async {
+    final db = await database;
+    return await db.query(
+      'user_profiles',
+      where: 'is_synced = ?',
+      whereArgs: [0],
+    );
+  }
+
+  Future<void> markUserProfileAsSynced(String uid) async {
+    final db = await database;
     await db.update(
       'user_profiles',
-      data,
+      {'is_synced': 1},
       where: 'uid = ?',
       whereArgs: [uid],
     );
@@ -250,11 +294,14 @@ class DatabaseService {
     await db.insert('food_logs', data);
   }
 
-  Future<List<Map<String, dynamic>>> getFoodLogsForDate(String uid, String date) async {
+  Future<List<Map<String, dynamic>>> getFoodLogsForDate(
+    String uid,
+    String date,
+  ) async {
     final db = await database;
-    
+
     print('🗃️ Querying food_logs table with uid: $uid, date: $date');
-    
+
     final results = await db.query(
       'food_logs',
       where: 'uid = ? AND date = ?',
@@ -267,18 +314,22 @@ class DatabaseService {
       print('🗃️ Sample record: ${results.first}');
     }
 
-    final mappedResults = results.map((row) => {
-      'id': row['id'].toString(),
-      'type': row['meal_type'],
-      'name': row['name'],
-      'cal': row['calories'],
-      'desc': row['description'],
-      'createdAt': row['created_at'],
-      'updatedAt': row['updated_at'],
-    }).toList();
+    final mappedResults = results
+        .map(
+          (row) => {
+            'id': row['id'].toString(),
+            'type': row['meal_type'],
+            'name': row['name'],
+            'cal': row['calories'],
+            'desc': row['description'],
+            'createdAt': row['created_at'],
+            'updatedAt': row['updated_at'],
+          },
+        )
+        .toList();
 
     print('🗃️ Mapped results: ${mappedResults.length} records');
-    
+
     return mappedResults;
   }
 
@@ -320,7 +371,6 @@ class DatabaseService {
     );
   }
 
-  // Clear all food logs for a specific date (used for sync)
   Future<void> clearFoodLogsForDate({
     required String uid,
     required String date,
@@ -341,12 +391,15 @@ class DatabaseService {
   ) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
-    final date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+    final date =
+        "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
 
     print('💾 DatabaseService.saveDailyTask: Saving for uid=$uid, date=$date');
     print('💾 DatabaseService.saveDailyTask: Input task data: $taskData');
-    print('💾 DatabaseService.saveDailyTask: Task data keys: ${taskData.keys.toList()}');
-    
+    print(
+      '💾 DatabaseService.saveDailyTask: Task data keys: ${taskData.keys.toList()}',
+    );
+
     // Log each task in detail before saving
     taskData.forEach((key, value) {
       print('   - $key: $value (${value.runtimeType})');
@@ -359,14 +412,16 @@ class DatabaseService {
 
     // Convert the entire taskData to JSON string for storage
     final jsonString = jsonEncode(taskData);
-    print('💾 DatabaseService.saveDailyTask: JSON string to store: $jsonString');
-    
+    print(
+      '💾 DatabaseService.saveDailyTask: JSON string to store: $jsonString',
+    );
+
     final data = {
       'uid': uid,
       'date': date,
       'task_type': 'daily_tasks',
-      'task_data': jsonString, // Store as JSON
-      'is_completed': 1, // Assume completed when saved
+      'task_data': jsonString,
+      'is_completed': 1,
       'created_at': now,
       'updated_at': now,
     };
@@ -380,22 +435,29 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       print('✅ DatabaseService.saveDailyTask: Successfully saved daily task');
-      
+
       // Verify the save by reading it back
       final savedData = await getDailyTask(uid, dateTime);
-      print('✅ DatabaseService.saveDailyTask: Verification read result: $savedData');
-      
+      print(
+        '✅ DatabaseService.saveDailyTask: Verification read result: $savedData',
+      );
     } catch (e) {
       print('❌ DatabaseService.saveDailyTask: Error saving: $e');
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>?> getDailyTask(String uid, DateTime dateTime) async {
+  Future<Map<String, dynamic>?> getDailyTask(
+    String uid,
+    DateTime dateTime,
+  ) async {
     final db = await database;
-    final date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+    final date =
+        "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
 
-    print('🗄️ DatabaseService.getDailyTask: Querying with uid=$uid, date=$date');
+    print(
+      '🗄️ DatabaseService.getDailyTask: Querying with uid=$uid, date=$date',
+    );
 
     final results = await db.query(
       'daily_tasks',
@@ -404,25 +466,31 @@ class DatabaseService {
     );
 
     print('🗄️ DatabaseService.getDailyTask: Found ${results.length} records');
-    
+
     if (results.isEmpty) {
       print('🗄️ DatabaseService.getDailyTask: No records found');
-      
+
       // Let's check if there are any records at all for this user
       final allUserRecords = await db.query(
         'daily_tasks',
         where: 'uid = ?',
         whereArgs: [uid],
       );
-      print('🗄️ DatabaseService.getDailyTask: Total records for user: ${allUserRecords.length}');
-      
+      print(
+        '🗄️ DatabaseService.getDailyTask: Total records for user: ${allUserRecords.length}',
+      );
+
       if (allUserRecords.isNotEmpty) {
-        print('🗄️ DatabaseService.getDailyTask: Available dates for this user:');
+        print(
+          '🗄️ DatabaseService.getDailyTask: Available dates for this user:',
+        );
         for (final record in allUserRecords) {
-          print('   - Date: ${record['date']}, Task Type: ${record['task_type']}');
+          print(
+            '   - Date: ${record['date']}, Task Type: ${record['task_type']}',
+          );
         }
       }
-      
+
       return null;
     }
 
@@ -436,16 +504,18 @@ class DatabaseService {
       print('   - Task Type: ${row['task_type']}');
       print('   - Created At: ${row['created_at']}');
       print('   - Updated At: ${row['updated_at']}');
-      
+
       final taskDataString = row['task_data'] as String;
       print('   - Raw JSON: $taskDataString');
-      
+
       final parsedData = jsonDecode(taskDataString) as Map<String, dynamic>;
       print('   - Parsed data: $parsedData');
-      
+
       return parsedData;
     } catch (e) {
-      print('❌ DatabaseService.getDailyTask: Error parsing daily task data: $e');
+      print(
+        '❌ DatabaseService.getDailyTask: Error parsing daily task data: $e',
+      );
       return null;
     }
   }
@@ -570,18 +640,31 @@ class DatabaseService {
 
   Future<Map<String, int>> getDataCounts(String uid) async {
     final db = await database;
-    
-    final foodCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM food_logs WHERE uid = ?', [uid])
-    ) ?? 0;
-    
-    final taskCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM daily_tasks WHERE uid = ?', [uid])
-    ) ?? 0;
-    
-    final exerciseCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM exercise_logs WHERE uid = ?', [uid])
-    ) ?? 0;
+
+    final foodCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM food_logs WHERE uid = ?', [
+            uid,
+          ]),
+        ) ??
+        0;
+
+    final taskCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM daily_tasks WHERE uid = ?', [
+            uid,
+          ]),
+        ) ??
+        0;
+
+    final exerciseCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM exercise_logs WHERE uid = ?',
+            [uid],
+          ),
+        ) ??
+        0;
 
     return {
       'food_logs': foodCount,
