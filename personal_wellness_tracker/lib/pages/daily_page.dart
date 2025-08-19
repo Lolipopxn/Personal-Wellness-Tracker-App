@@ -36,57 +36,113 @@ class _Daily extends State<DailyPage> {
     return StatefulBuilder(
       builder: (context, setModalState) {
         return Padding(
-          padding: EdgeInsets.only(bottom: 200.0, top: 30, left: 20, right: 20),
+          padding: const EdgeInsets.only(
+            bottom: 200.0,
+            top: 30,
+            left: 20,
+            right: 20,
+          ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center, // Center all elements
             mainAxisSize: MainAxisSize.min,
-            spacing: 50,
+            crossAxisAlignment: CrossAxisAlignment
+                .stretch, // Stretch children for better alignment
             children: [
-              Text("เลือกระยะเวลา", style: TextStyle(fontSize: 24)),
+              // Title for the picker
+              Text(
+                "เลือกระยะเวลา",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2C3E50), // A deep, calming blue
+                ),
+              ),
+              const SizedBox(
+                height: 40,
+              ), // More vertical space for a cleaner look
+              // Time selection row
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  DropdownButton<int>(
+                  // Hour Dropdown
+                  _buildDropdown(
                     value: selectedHour,
                     items: List.generate(
                       24,
                       (i) => DropdownMenuItem(
                         value: i,
-                        child: Text("$i ชม", style: TextStyle(fontSize: 24)),
+                        child: Text(
+                          "$i ชม.",
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Color(0xFF34495E),
+                          ),
+                        ),
                       ),
                     ),
                     onChanged: (v) => setModalState(() => selectedHour = v!),
                   ),
-                  SizedBox(width: 20),
-                  DropdownButton<int>(
+                  const SizedBox(width: 20),
+                  // Minute Dropdown
+                  _buildDropdown(
                     value: selectedMinute,
                     items: List.generate(
                       60,
                       (i) => DropdownMenuItem(
                         value: i,
-                        child: Text("$i นาที", style: TextStyle(fontSize: 24)),
+                        child: Text(
+                          "$i นาที",
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Color(0xFF34495E),
+                          ),
+                        ),
                       ),
                     ),
                     onChanged: (v) => setModalState(() => selectedMinute = v!),
                   ),
                 ],
               ),
+              const SizedBox(height: 50), // Increased spacing between rows
+              // Action buttons row
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                spacing: 10,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  TextButton(
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("ยกเลิก", style: TextStyle(fontSize: 20)),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
+                  // Cancel button
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Color(
+                            0xFF95A5A6,
+                          ), // A muted gray for a softer feel
+                        ),
+                      ),
                     ),
-                    onPressed: () => onConfirm(selectedHour, selectedMinute),
-                    child: Text("ตกลง", style: TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 10),
+                  // Confirm button
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => onConfirm(selectedHour, selectedMinute),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(
+                          0xFF2ECC71,
+                        ), // A fresh, vibrant green
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            10,
+                          ), // Rounded corners
+                        ),
+                      ),
+                      child: Text("ตกลง", style: TextStyle(fontSize: 20)),
+                    ),
                   ),
                 ],
               ),
@@ -94,6 +150,31 @@ class _Daily extends State<DailyPage> {
           ),
         );
       },
+    );
+  }
+
+  // A helper function to apply consistent styling to the DropdownButton
+  Widget _buildDropdown({
+    required int value,
+    required List<DropdownMenuItem<int>> items,
+    required Function(int?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Color(0xFFECF0F1), // A light, neutral background
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Color(0xFFBDC3C7)), // Subtle border
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: value,
+          items: items,
+          onChanged: onChanged,
+          style: TextStyle(fontSize: 24, color: Color(0xFF34495E)),
+          dropdownColor: Colors.white,
+        ),
+      ),
     );
   }
 
@@ -228,7 +309,31 @@ class _Daily extends State<DailyPage> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GestureDetector(
+                        ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isTask1
+                                ? Colors.green
+                                : Colors.red,
+                            radius: 20,
+                            child: const Icon(
+                              Icons.fitness_center,
+                              color: Colors.white,
+                              size: 25,
+                            ),
+                          ),
+                          title: Text(
+                            "การออกกำลังกาย",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isTask1 ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
                           onTap: () async {
                             final taskData = await _firestoreService
                                 .getDailyTask(DateTime.now());
@@ -253,85 +358,168 @@ class _Daily extends State<DailyPage> {
                                       ? exercise['duration']
                                       : '',
                                 );
+
                                 int hour = 0, minute = 0;
 
                                 return StatefulBuilder(
                                   builder: (context, setStateDialog) {
                                     return AlertDialog(
-                                      insetPadding: EdgeInsets.all(20),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
-                                      title: Text("การออกกำลังกายในวันนี้"),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        spacing: 20,
+                                      backgroundColor: Colors.white,
+                                      title: Row(
                                         children: [
-                                          TextField(
-                                            controller: nameController,
-                                            decoration: InputDecoration(
-                                              labelText: "ประเภท",
-                                              border: OutlineInputBorder(),
-                                            ),
+                                          Icon(
+                                            Icons.fitness_center,
+                                            color: Colors.green,
+                                            size: 26,
                                           ),
-                                          TextField(
-                                            controller: categoryController,
-                                            decoration: InputDecoration(
-                                              labelText: "เเคลอรี่ที่เผาผลาญ",
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                          GestureDetector(
-                                            onTap: () async {
-                                              int tempHour = hour;
-                                              int tempMinute = minute;
-
-                                              await showModalBottomSheet(
-                                                context: context,
-                                                builder: (context) =>
-                                                    _buildDurationPicker(
-                                                      tempHour,
-                                                      tempMinute,
-                                                      (h, m) {
-                                                        setStateDialog(() {
-                                                          hour = h;
-                                                          minute = m;
-                                                          timeController.text =
-                                                              "$h ชั่วโมง $m นาที";
-                                                        });
-                                                        Navigator.pop(context);
-                                                      },
-                                                    ),
-                                              );
-                                            },
-                                            child: AbsorbPointer(
-                                              child: TextField(
-                                                controller: timeController,
-                                                decoration: InputDecoration(
-                                                  labelText: "ระยะเวลา",
-                                                  border: OutlineInputBorder(),
-                                                ),
-                                              ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "การออกกำลังกายในวันนี้",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 20,
+                                              color: Colors.black87,
                                             ),
                                           ),
                                         ],
                                       ),
+                                      content: SingleChildScrollView(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            /// Exercise Type
+                                            TextField(
+                                              controller: nameController,
+                                              decoration: InputDecoration(
+                                                labelText: "ประเภท",
+                                                prefixIcon: Icon(
+                                                  Icons.directions_run,
+                                                ),
+                                                filled: true,
+                                                fillColor: Colors.grey[100],
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 15),
+
+                                            /// Calories Burned
+                                            TextField(
+                                              controller: categoryController,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: InputDecoration(
+                                                labelText: "แคลอรี่ที่เผาผลาญ",
+                                                prefixIcon: Icon(
+                                                  Icons.local_fire_department,
+                                                ),
+                                                filled: true,
+                                                fillColor: Colors.grey[100],
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 15),
+
+                                            /// Duration Picker
+                                            GestureDetector(
+                                              onTap: () async {
+                                                int tempHour = hour;
+                                                int tempMinute = minute;
+
+                                                await showModalBottomSheet(
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.vertical(
+                                                          top: Radius.circular(
+                                                            20,
+                                                          ),
+                                                        ),
+                                                  ),
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      _buildDurationPicker(
+                                                        tempHour,
+                                                        tempMinute,
+                                                        (h, m) {
+                                                          setStateDialog(() {
+                                                            hour = h;
+                                                            minute = m;
+                                                            timeController
+                                                                    .text =
+                                                                "$h ชั่วโมง $m นาที";
+                                                          });
+                                                          Navigator.pop(
+                                                            context,
+                                                          );
+                                                        },
+                                                      ),
+                                                );
+                                              },
+                                              child: AbsorbPointer(
+                                                child: TextField(
+                                                  controller: timeController,
+                                                  decoration: InputDecoration(
+                                                    labelText: "ระยะเวลา",
+                                                    prefixIcon: Icon(
+                                                      Icons.timer,
+                                                    ),
+                                                    filled: true,
+                                                    fillColor: Colors.grey[100],
+                                                    border: OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                      borderSide:
+                                                          BorderSide.none,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      actionsPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
                                       actions: [
                                         TextButton(
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.grey[600],
+                                          ),
                                           onPressed: () =>
                                               Navigator.pop(context),
-                                          child: Text("ยกเลิก"),
+                                          child: Text(
+                                            "ยกเลิก",
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                            ),
+                                          ),
                                         ),
                                         ElevatedButton(
-                                          style: ButtonStyle(
-                                            backgroundColor:
-                                                WidgetStateProperty.all(
-                                                  Colors.green,
-                                                ),
-                                            foregroundColor:
-                                                WidgetStateProperty.all(
-                                                  Colors.white,
-                                                ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
+                                            ),
                                           ),
                                           onPressed: () async {
                                             if (nameController.text
@@ -405,18 +593,15 @@ class _Daily extends State<DailyPage> {
                                               }
                                             }
 
-                                            print(
-                                              "ประเภท: ${nameController.text}",
-                                            );
-                                            print(
-                                              "ประเภท: ${categoryController.text}",
-                                            );
-                                            print(
-                                              "ระยะเวลา: ${timeController.text}",
-                                            );
                                             Navigator.pop(context);
                                           },
-                                          child: Text("ตกลง"),
+                                          child: Text(
+                                            "บันทึก",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     );
@@ -425,33 +610,34 @@ class _Daily extends State<DailyPage> {
                               },
                             );
                           },
-                          child: Container(
-                            padding: EdgeInsets.all(0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              spacing: 10,
-                              children: [
-                                Icon(
-                                  isTask1
-                                      ? Icons.check_box
-                                      : Icons.check_box_outline_blank,
-                                  color: isTask1 ? Colors.green : Colors.red,
-                                  size: 20,
-                                ),
-                                Text(
-                                  "บันทึกการออกกำลังกาย",
-                                  style: TextStyle(
-                                    color: isTask1 ? Colors.green : Colors.red,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                        ),
+                        Divider(color: Colors.grey[300]),
+
+                        ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isTask2
+                                ? Colors.green
+                                : Colors.red,
+                            radius: 20,
+                            child: const Icon(
+                              Icons.local_drink,
+                              color: Colors.white,
+                              size: 25,
                             ),
                           ),
-                        ),
-
-                        GestureDetector(
+                          title: Text(
+                            "บันทึกการดื่มน้ำ",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isTask2 ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
                           onTap: () async {
                             final taskData = await _firestoreService
                                 .getDailyTask(DateTime.now());
@@ -468,9 +654,26 @@ class _Daily extends State<DailyPage> {
                                   builder: (context, setStateDialog) {
                                     return AlertDialog(
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      title: Text("การดื่มน้ำในวันนี้"),
+                                      backgroundColor: Colors.white,
+                                      title: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.local_drink,
+                                            color: Colors.blue,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "การดื่มน้ำในวันนี้",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text("💧"),
+                                        ],
+                                      ),
                                       content: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
@@ -479,8 +682,12 @@ class _Daily extends State<DailyPage> {
                                             decoration: InputDecoration(
                                               labelText:
                                                   "ดื่มกี่แก้ว/ลิตร ต่อวัน",
-                                              border: OutlineInputBorder(),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
                                             ),
+                                            keyboardType: TextInputType.number,
                                           ),
                                         ],
                                       ),
@@ -488,18 +695,16 @@ class _Daily extends State<DailyPage> {
                                         TextButton(
                                           onPressed: () =>
                                               Navigator.pop(context),
-                                          child: Text("ยกเลิก"),
+                                          child: const Text("ยกเลิก"),
                                         ),
                                         ElevatedButton(
-                                          style: ButtonStyle(
-                                            backgroundColor:
-                                                WidgetStateProperty.all(
-                                                  Colors.green,
-                                                ),
-                                            foregroundColor:
-                                                WidgetStateProperty.all(
-                                                  Colors.white,
-                                                ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
                                           ),
                                           onPressed: () async {
                                             if (nameController.text
@@ -515,7 +720,7 @@ class _Daily extends State<DailyPage> {
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  SnackBar(
+                                                  const SnackBar(
                                                     content: Text(
                                                       'กรุณาล็อกอินก่อนบันทึกข้อมูล',
                                                     ),
@@ -543,7 +748,7 @@ class _Daily extends State<DailyPage> {
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  SnackBar(
+                                                  const SnackBar(
                                                     content: Text(
                                                       'บันทึกข้อมูลการดื่มน้ำสำเร็จ',
                                                     ),
@@ -561,10 +766,9 @@ class _Daily extends State<DailyPage> {
                                                 );
                                               }
                                             }
-
                                             Navigator.pop(context);
                                           },
-                                          child: Text("ตกลง"),
+                                          child: const Text("ตกลง"),
                                         ),
                                       ],
                                     );
@@ -573,33 +777,34 @@ class _Daily extends State<DailyPage> {
                               },
                             );
                           },
-                          child: Container(
-                            padding: EdgeInsets.all(0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  isTask2
-                                      ? Icons.check_box
-                                      : Icons.check_box_outline_blank,
-                                  color: isTask2 ? Colors.green : Colors.red,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 10),
-                                Text(
-                                  "บันทึกการดื่มน้ำ",
-                                  style: TextStyle(
-                                    color: isTask2 ? Colors.green : Colors.red,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                        ),
+                        Divider(color: Colors.grey[300]),
+
+                        ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isTask3
+                                ? Colors.green
+                                : Colors.red,
+                            radius: 20,
+                            child: const Icon(
+                              Icons.bedtime,
+                              color: Colors.white,
+                              size: 25,
                             ),
                           ),
-                        ),
-
-                        GestureDetector(
+                          title: Text(
+                            "ติดตามการนอน",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isTask3 ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
                           onTap: () {
                             showSleepTrackingDialog(
                               context,
@@ -612,33 +817,29 @@ class _Daily extends State<DailyPage> {
                               },
                             );
                           },
-                          child: Container(
-                            padding: EdgeInsets.all(0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  isTask3
-                                      ? Icons.check_box
-                                      : Icons.check_box_outline_blank,
-                                  color: isTask3 ? Colors.green : Colors.red,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 10),
-                                Text(
-                                  "ติดตามการนอน",
-                                  style: TextStyle(
-                                    color: isTask3 ? Colors.green : Colors.red,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                        ),
+                        Divider(color: Colors.grey[300]),
+
+                        ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isTask4
+                                ? Colors.green
+                                : Colors.red,
+                            child: const Icon(Icons.mood, color: Colors.white),
+                          ),
+                          title: Text(
+                            "บันทึกอารมณ์วันนี้",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isTask4 ? Colors.green : Colors.red,
                             ),
                           ),
-                        ),
-
-                        GestureDetector(
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
                           onTap: () {
                             showDialog(
                               context: context,
@@ -656,26 +857,6 @@ class _Daily extends State<DailyPage> {
                               },
                             );
                           },
-                          child: Row(
-                            children: [
-                              Icon(
-                                isTask4
-                                    ? Icons.check_box
-                                    : Icons.check_box_outline_blank,
-                                color: isTask4 ? Colors.green : Colors.red,
-                                size: 20,
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                "บันทึกอารมณ์วันนี้",
-                                style: TextStyle(
-                                  color: isTask4 ? Colors.green : Colors.red,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),

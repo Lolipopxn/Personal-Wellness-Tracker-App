@@ -20,7 +20,7 @@ class _MoodSelectorState extends State<MoodSelector> {
 
   final List<String> moods = ["😃", "😊", "😐", "😢", "😠"];
 
-  bool isLoading = true; // เพิ่มตัวแปรไว้รอโหลดข้อมูล
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -46,18 +46,41 @@ class _MoodSelectorState extends State<MoodSelector> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("เลือกอารมณ์ของวันนี้"),
+      backgroundColor: Colors.grey.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Text(
+            "อารมณ์วันนี้",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          ),
+          const SizedBox(width: 8),
+          Text("💖", style: TextStyle(fontSize: 26)),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Wrap(
-            spacing: 10,
+            spacing: 12,
+            runSpacing: 12,
             children: moods.map((emoji) {
+              bool isSelected = selectedMood == emoji;
               return ChoiceChip(
-                label: Text(emoji, style: TextStyle(fontSize: 24)),
-                selected: selectedMood == emoji,
-                selectedColor: Colors.blue.shade100,
-                backgroundColor: Colors.grey.shade200,
+                label: Text(emoji, style: TextStyle(fontSize: 28)),
+                selected: isSelected,
+                selectedColor: Colors.greenAccent.shade100,
+                backgroundColor: Colors.white,
+                shadowColor: Colors.grey.shade300,
+                elevation: isSelected ? 4 : 2,
+                pressElevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: isSelected ? Colors.green : Colors.grey.shade300,
+                    width: 2,
+                  ),
+                ),
                 onSelected: (_) {
                   setState(() {
                     selectedMood = emoji;
@@ -68,14 +91,23 @@ class _MoodSelectorState extends State<MoodSelector> {
           ),
         ],
       ),
+      actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: Text("ยกเลิก"),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey.shade700),
+          onPressed: () => Navigator.pop(context),
+          child: Text("ยกเลิก", style: TextStyle(fontSize: 16)),
         ),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 4,
+          ),
           onPressed: () async {
             if (selectedMood != null) {
               final user = FirebaseAuth.instance.currentUser;
@@ -91,10 +123,7 @@ class _MoodSelectorState extends State<MoodSelector> {
               };
 
               try {
-                await _firestoreService.saveDailyTask(
-                  moodData,
-                  DateTime.now(),
-                );
+                await _firestoreService.saveDailyTask(moodData, DateTime.now());
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('บันทึกข้อมูลอารมณ์สำเร็จ')),
@@ -115,7 +144,7 @@ class _MoodSelectorState extends State<MoodSelector> {
 
             Navigator.pop(context);
           },
-          child: Text("ตกลง"),
+          child: Text("ตกลง", style: TextStyle(fontSize: 16)),
         ),
       ],
     );

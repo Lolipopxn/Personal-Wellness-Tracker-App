@@ -43,6 +43,7 @@ class _ActivitySectionState extends State<ActivitySection> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text("เพิ่มกิจกรรม"),
+        backgroundColor: Colors.white,
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
@@ -56,6 +57,10 @@ class _ActivitySectionState extends State<ActivitySection> {
             child: Text("ยกเลิก"),
           ),
           ElevatedButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(Colors.green),
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 final newActivityText = controller.text.trim();
