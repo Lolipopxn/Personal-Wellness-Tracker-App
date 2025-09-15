@@ -1016,7 +1016,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(tempValue),
-                  child: const Text("ตกลง"),
+                  child: const Text("ตกลง"), // "Confirm"
                 ),
               ),
             ],
