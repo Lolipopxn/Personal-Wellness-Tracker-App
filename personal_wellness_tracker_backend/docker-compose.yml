@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:latest
     container_name: wellness_postgres
     environment:
       POSTGRES_DB: wellness_tracker_db
       POSTGRES_USER: wellness_user
       POSTGRES_PASSWORD: wellness_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql

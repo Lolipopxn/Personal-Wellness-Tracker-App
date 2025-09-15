@@ -9,7 +9,7 @@ load_dotenv()
 # Database configuration
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://username:password@localhost:5432/wellness_tracker_db"
+    "postgresql://wellness_user:wellness_password@localhost:5433/wellness_tracker_db"
 )
 
 engine = create_engine(DATABASE_URL)
