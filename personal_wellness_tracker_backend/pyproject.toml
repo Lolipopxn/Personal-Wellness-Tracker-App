@@ -1,0 +1,19 @@
+[project]
+name = "personal-wellness-tracker-backend"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Alifriduwan",email = "6510110565@email.psu.ac.th"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi (>=0.116.1,<0.117.0)",
+    "pydantic (>=2.11.9,<3.0.0)",
+    "fastapi-cli (>=0.0.11,<0.0.12)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
