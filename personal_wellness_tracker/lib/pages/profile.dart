@@ -221,20 +221,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _currentStepIndex > 0
-                              ? () {
-                                  setState(() {
-                                    if (_currentStepIndex > 0) {
-                                      _stepErrorMessage = null;
-                                      _currentStepIndex--;
-                                    }
-                                  });
-                                }
-                              : null,
+                          onPressed: () {
+                            if (_currentStepIndex == 0) {
+                              // ถ้าอยู่ stage 1 (index 0) ให้กลับไปหน้า home
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(builder: (_) => const HomePage()),
+                              );
+                            } else if (_currentStepIndex > 0) {
+                              setState(() {
+                                _stepErrorMessage = null;
+                                _currentStepIndex--;
+                              });
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _currentStepIndex > 0
-                                ? Colors.grey[200]
-                                : Colors.grey[100],
+                            backgroundColor: Colors.grey[200],
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
