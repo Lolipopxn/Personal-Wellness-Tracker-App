@@ -266,3 +266,21 @@ class PaginatedResponse(BaseModel):
     page: int
     size: int
     total_pages: int
+
+# Authentication schemas
+class UserRegister(BaseModel):
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., min_length=6, description="User password (minimum 6 characters)")
+    username: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., description="User password")
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    user_id: Optional[str] = None

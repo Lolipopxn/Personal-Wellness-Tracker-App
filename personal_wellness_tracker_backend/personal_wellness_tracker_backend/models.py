@@ -41,6 +41,7 @@ class User(Base):
     
     uid = Column(String, primary_key=True)
     email = Column(String, nullable=False, unique=True)
+    password_hash = Column(String, nullable=False)  # เพิ่ม password hash field
     username = Column(String)
     age = Column(Integer)
     gender = Column(Enum(GenderEnum))

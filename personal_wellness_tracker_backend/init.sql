@@ -39,6 +39,7 @@ CREATE TYPE "temperature_unit" AS ENUM (
 CREATE TABLE "users" (
   "uid" varchar PRIMARY KEY,
   "email" varchar NOT NULL,
+  "password_hash" varchar NOT NULL,
   "username" varchar,
   "age" integer,
   "gender" gender,
