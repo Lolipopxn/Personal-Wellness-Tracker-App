@@ -88,33 +88,33 @@ def login_user(
         token_type="bearer"
     )
 
-@router.post("/login-json", response_model=schemas.Token)
-def login_user_json(
-    user_data: schemas.UserLogin,
-    db: Session = Depends(get_db)
-):
-    """
-    Login user with JSON payload and return access token
-    """
-    # Authenticate user
-    user = db.query(models.User).filter(models.User.email == user_data.email).first()
+# @router.post("/login-json", response_model=schemas.Token)
+# def login_user_json(
+#     user_data: schemas.UserLogin,
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Login user with JSON payload and return access token
+#     """
+#     # Authenticate user
+#     user = db.query(models.User).filter(models.User.email == user_data.email).first()
     
-    if not user or not security.verify_password(user_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+#     if not user or not security.verify_password(user_data.password, user.password_hash):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect email or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
     
-    # Create access token
-    access_token = security.create_access_token(data={"sub": user.uid})
-    refresh_token = security.create_refresh_token(data={"sub": user.uid})
+#     # Create access token
+#     access_token = security.create_access_token(data={"sub": user.uid})
+#     refresh_token = security.create_refresh_token(data={"sub": user.uid})
     
-    return schemas.Token(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer"
-    )
+#     return schemas.Token(
+#         access_token=access_token,
+#         refresh_token=refresh_token,
+#         token_type="bearer"
+#     )
 
 @router.get("/me", response_model=schemas.User)
 def get_current_user_info(
