@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,13 +22,25 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..forward();
-
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
-    Timer(const Duration(milliseconds: 3000), () {
-      if (!mounted) return;
+    _start();
+  }
+
+  Future<void> _start() async {
+    // รอแอนิเมชัน/สปแลช
+    await Future.delayed(const Duration(milliseconds: 3000));
+
+    // เช็คว่าผ่าน Onboarding แล้วหรือยัง
+    final sp = await SharedPreferences.getInstance();
+    final seen = sp.getBool('onboarding_done') ?? false;
+
+    if (!mounted) return;
+    if (seen) {
       Navigator.of(context).pushReplacementNamed('/login');
-    });
+    } else {
+      Navigator.of(context).pushReplacementNamed('/onboarding');
+    }
   }
 
   @override
@@ -38,9 +51,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-
-    const background = Color(0xFF120A3A); 
-    const diamond     = Color(0xFFBFE3D6);
+    const background = Color(0xFF120A3A);
+    const diamond = Color(0xFFBFE3D6);
 
     return Scaffold(
       backgroundColor: background,
@@ -50,9 +62,8 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // สี่เหลี่ยมข้าวหลามตัด + โลโก้
               Transform.rotate(
-                angle: 0.785398, // 45 องศา
+                angle: 0.785398,
                 child: Container(
                   width: 130,
                   height: 130,
@@ -61,14 +72,14 @@ class _SplashScreenState extends State<SplashScreen>
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Transform.rotate(
-                    angle: -0.785398, // หมุนกลับให้ไอคอนตรง
+                    angle: -0.785398,
                     child: Center(
-                      child: Image.asset("assets/images/heart-beat.png", width: 80, height: 96, color: Colors.white),
-                      // child: Icon(
-                      //   Icons.health_and_safety_rounded,
-                      //   color: Colors.white,
-                      //   size: 96,
-                      // ),
+                      child: Image.asset(
+                        "assets/images/heart-beat.png",
+                        width: 80,
+                        height: 96,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),

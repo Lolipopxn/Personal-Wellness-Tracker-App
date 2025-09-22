@@ -9,6 +9,7 @@ import 'pages/daily_page.dart';
 import 'pages/setting_page.dart';
 import 'pages/all_logs_page.dart';
 import 'package:personal_wellness_tracker/์NavigationBar/main_scaffold.dart';
+import 'pages/Onboarding.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -123,6 +124,7 @@ class MyApp extends StatelessWidget {
             '/profile': (context) => Profile(),
             '/register': (context) => RegisterPage(),
             // '/dashboard': (context) => Dashboard(),
+            '/onboarding': (context) => OnboardingScreen(),
             '/food_save': (context) => FoodSavePage(),
             '/daily': (context) => DailyPage(),
             '/settings': (context) => SettingsPage(),
