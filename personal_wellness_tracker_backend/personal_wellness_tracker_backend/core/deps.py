@@ -8,7 +8,7 @@ from ..database import get_db
 from . import config, security
 
 # OAuth2 scheme สำหรับ authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 settings = config.get_settings()
 
 def get_current_user(
