@@ -1,87 +1,112 @@
 import 'package:flutter/material.dart';
-
-import 'package:firebase_auth/firebase_auth.dart';
-
-import '../app/firestore_service.dart';
+import '../services/auth_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 
   @override
-  State<UserProfilePage> createState() => _UserProfilePage();
+  State<UserProfilePage> createState() => _UserProfilePageState();
 }
 
-class _UserProfilePage extends State<UserProfilePage> {
-  final FirestoreService _firestoreService = FirestoreService();
-  User? _user;
-  Map<String, dynamic>? _firestoreUserData;
+class _UserProfilePageState extends State<UserProfilePage> {
+  Map<String, dynamic>? _userData;
   bool _isLoading = true;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _loadAllUserData();
+    _loadUserData();
   }
 
-   Future<void> _loadAllUserData() async {
+  Future<void> _loadUserData() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = '';
     });
 
-    _user = FirebaseAuth.instance.currentUser;
-    if (_user != null) {
-      await _user?.reload();
-      _user = FirebaseAuth.instance.currentUser;
-      _firestoreUserData = await _firestoreService.getUserData();
-    }
+    final result = await AuthService.getCurrentUser();
 
-    if (mounted) {
+    if (!mounted) return;
+
+    if (result['success']) {
       setState(() {
+        _userData = result['user'];
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage = result['message'] ?? 'Failed to load user data';
         _isLoading = false;
       });
     }
   }
 
-  // Dummy data for user information
-  final String userBio = 'ยินดีต้อนรับสู่โปรไฟล์ของคุณ!';
-
+  // Dummy data for user achievements
   final List<Map<String, dynamic>> achievements = const [
-    {'title': 'ผู้ริเริ่ม', 'description': 'สำเร็จบันทึกครั้งเเรก', 'isAchieved': true,},
-    {'title': 'นักวางแผน', 'description': 'บันทึกอาหารครบ 10 วัน', 'isAchieved': false,},
-    {'title': 'นักพัฒนา', 'description': 'บันทึกกิจกรรมครบ 20 วัน', 'isAchieved': false,},
-    {'title': 'ผู้เชี่ยวชาญ', 'description': 'บรรลุเป้าหมายสุขภาพ 3 เป้าหมาย', 'isAchieved': false,},
-    {'title': 'นักวางแผนมื้ออาหาร', 'description': 'วางแผนมื้ออาหารครบ 5 มื้อ', 'isAchieved': false,},
-    {'title': 'นักออกกำลังกาย', 'description': 'บันทึกการออกกำลังกายครบ 10 วัน', 'isAchieved': false,},
-    {'title': 'ผู้เชี่ยวชาญด้านโภชนาการ', 'description': 'บรรลุเป้าหมายโภชนาการ 3 เป้าหมาย', 'isAchieved': false,},
-    {'title': 'นักวางแผน', 'description': 'บันทึกอาหารครบ 20 วัน', 'isAchieved': false,},
-    {'title': 'นักพัฒนา', 'description': 'บันทึกกิจกรรมครบ 40 วัน', 'isAchieved': false,},
-    {'title': 'นักวางแผนมื้ออาหาร', 'description': 'วางแผนมื้ออาหารครบ 15 มื้อ', 'isAchieved': false,},
-    {'title': 'นักออกกำลังกาย', 'description': 'บันทึกการออกกำลังกายครบ 30 วัน', 'isAchieved': false,},
+    {
+      'title': 'ผู้ริเริ่ม',
+      'description': 'สำเร็จบันทึกครั้งเเรก',
+      'isAchieved': true,
+    },
+    {
+      'title': 'นักวางแผน',
+      'description': 'บันทึกอาหารครบ 10 วัน',
+      'isAchieved': false,
+    },
+    {
+      'title': 'นักพัฒนา',
+      'description': 'บันทึกกิจกรรมครบ 20 วัน',
+      'isAchieved': false,
+    },
+    {
+      'title': 'ผู้เชี่ยวชาญ',
+      'description': 'บรรลุเป้าหมายสุขภาพ 3 เป้าหมาย',
+      'isAchieved': false,
+    },
+    {
+      'title': 'นักวางแผนมื้ออาหาร',
+      'description': 'วางแผนมื้ออาหารครบ 5 มื้อ',
+      'isAchieved': false,
+    },
+    {
+      'title': 'นักออกกำลังกาย',
+      'description': 'บันทึกการออกกำลังกายครบ 10 วัน',
+      'isAchieved': false,
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_errorMessage.isNotEmpty) {
       return Scaffold(
-        body: const Center(child: CircularProgressIndicator()),
+        appBar: AppBar(title: const Text("Profile")),
+        body: Center(
+          child: Text(_errorMessage, style: const TextStyle(color: Colors.red)),
+        ),
       );
     }
 
-    final String username =
-        _firestoreUserData?['username'] ?? _user?.displayName ?? "ไม่ทราบชื่อ";
-    final String? photoUrl =
-        _firestoreUserData?['profileImageUrl'] ?? _user?.photoURL;
-    
+    final String username = _userData?['username'] ?? "ไม่ทราบชื่อ";
+    final String email = _userData?['email'] ?? "ไม่ทราบอีเมล";
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
-            // Header Section: Avatar and Name
+            // Header Section
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 30.0, horizontal: 20.0),
+              padding: const EdgeInsets.symmetric(
+                vertical: 30.0,
+                horizontal: 20.0,
+              ),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [Color(0xFF4DA1A9), Color(0xff2E5077)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -101,13 +126,14 @@ class _UserProfilePage extends State<UserProfilePage> {
               ),
               child: Column(
                 children: <Widget>[
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 60,
-                    backgroundImage: photoUrl != null
-                      ? NetworkImage(photoUrl)
-                      : null,
                     backgroundColor: Colors.white,
-                    child: photoUrl == null ? const Icon(Icons.person, size: 60, color: Color(0xff2E5077)) : null,
+                    child: Icon(
+                      Icons.person,
+                      size: 60,
+                      color: Color(0xff2E5077),
+                    ),
                   ),
                   const SizedBox(height: 15),
                   Text(
@@ -121,7 +147,7 @@ class _UserProfilePage extends State<UserProfilePage> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    userBio,
+                    'ยินดีต้อนรับสู่โปรไฟล์ของคุณ!',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -141,14 +167,18 @@ class _UserProfilePage extends State<UserProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   const Text(
-                    'ข้อมูลส่วนตัว', // Personal Information heading
+                    'ข้อมูลส่วนตัว',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.blueGrey,
                     ),
                   ),
-                  const Divider(height: 20, thickness: 2, color: Colors.blueGrey),
+                  const Divider(
+                    height: 20,
+                    thickness: 2,
+                    color: Colors.blueGrey,
+                  ),
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
@@ -158,9 +188,13 @@ class _UserProfilePage extends State<UserProfilePage> {
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         children: [
-                          _buildDetailRow(Icons.account_circle, 'ชื่อ', _user?.displayName ?? "ไม่ทราบชื่อ",),
+                          _buildDetailRow(
+                            Icons.account_circle,
+                            'ชื่อผู้ใช้',
+                            username,
+                          ),
                           const SizedBox(height: 15),
-                          _buildDetailRow(Icons.email, 'อีเมล', _user?.email ?? "ไม่ทราบอีเมล",),
+                          _buildDetailRow(Icons.email, 'อีเมล', email),
                           const SizedBox(height: 15),
                         ],
                       ),
@@ -178,37 +212,45 @@ class _UserProfilePage extends State<UserProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   const Text(
-                    'ความสำเร็จ', // Achievements heading
+                    'ความสำเร็จ',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.blueGrey,
                     ),
                   ),
-                  const Divider(height: 20, thickness: 2, color: Colors.blueGrey),
+                  const Divider(
+                    height: 20,
+                    thickness: 2,
+                    color: Colors.blueGrey,
+                  ),
                   ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(), // Disable scrolling for this list as parent is scrollable
-                    shrinkWrap: true, // Wrap content height
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
                     itemCount: achievements.length,
                     itemBuilder: (context, index) {
                       final achievement = achievements[index];
-                      final bool isAchieved = achievement['isAchieved'] as bool; // Get achievement status
+                      final bool isAchieved = achievement['isAchieved'] as bool;
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8.0),
-                        elevation: isAchieved ? 3 : 1, // Lower elevation if not achieved
+                        elevation: isAchieved ? 3 : 1,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        // Conditionally set color based on achievement status
-                        color: isAchieved ? Theme.of(context).cardTheme.color : Colors.grey[200],
+                        color: isAchieved
+                            ? Theme.of(context).cardTheme.color
+                            : Colors.grey[200],
                         child: ListTile(
                           leading: CircleAvatar(
-
-                            backgroundColor: isAchieved ? Colors.teal[100] : Colors.grey[300],
+                            backgroundColor: isAchieved
+                                ? Colors.teal[100]
+                                : Colors.grey[300],
                             child: Icon(
                               Icons.star,
-                              color: isAchieved ? Colors.teal[700] : Colors.grey[500],
+                              color: isAchieved
+                                  ? Colors.teal[700]
+                                  : Colors.grey[500],
                             ),
                           ),
                           title: Text(
@@ -216,20 +258,27 @@ class _UserProfilePage extends State<UserProfilePage> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
-                              color: isAchieved ? Colors.blueGrey : Colors.grey[600], // Darker grey for unachieved
+                              color: isAchieved
+                                  ? Colors.blueGrey
+                                  : Colors.grey[600],
                             ),
                           ),
                           subtitle: Text(
                             achievement['description']!,
                             style: TextStyle(
                               fontSize: 14,
-                              color: isAchieved ? Colors.grey[600] : Colors.grey[500], // Lighter grey for unachieved
+                              color: isAchieved
+                                  ? Colors.grey[600]
+                                  : Colors.grey[500],
                             ),
                           ),
                           trailing: isAchieved
                               ? null
-                              : const Icon(Icons.lock, size: 16, color: Colors.grey), // Show lock icon if not achieved
-                          onTap: () {} // Disable onTap if not achieved
+                              : const Icon(
+                                  Icons.lock,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
                         ),
                       );
                     },
@@ -237,14 +286,14 @@ class _UserProfilePage extends State<UserProfilePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 30), // Bottom padding
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  // Helper method to build a detail row with icon and text
+  // Helper widget
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,10 +315,7 @@ class _UserProfilePage extends State<UserProfilePage> {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               ),
             ],
           ),
