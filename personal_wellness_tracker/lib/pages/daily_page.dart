@@ -4,9 +4,9 @@ import 'dart:async';
 import 'package:personal_wellness_tracker/Dialog/dialogMood.dart';
 import 'package:personal_wellness_tracker/Dialog/sleepDialog.dart';
 import 'package:personal_wellness_tracker/Dialog/activityDialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../app/daily_task_api.dart';
 
 class DailyPage extends StatefulWidget {
   const DailyPage({super.key});
@@ -18,7 +18,6 @@ class DailyPage extends StatefulWidget {
 class _Daily extends State<DailyPage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final FirestoreService _firestoreService = FirestoreService();
 
   bool isTask1 = false;
   bool isTask2 = false;
@@ -180,27 +179,48 @@ class _Daily extends State<DailyPage> {
 
   Map<String, dynamic>? taskData;
 
+  Future<bool> _isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token') != null;
+  }
+
   Future<void> loadDailyTasks() async {
     try {
-      final taskData = await _firestoreService.getDailyTask(DateTime.now());
+      final hasLogin = await _isLoggedIn();
+      if (!hasLogin) return;
 
-      if (taskData != null) {
+      final dailyTask = await DailyTaskApi.getDailyTask(DateTime.now());
+      if (!mounted) return;
+
+      if (dailyTask != null) {
+        // ดึง tasks ทั้งหมดของ dailyTask นี้
+        final tasks = await DailyTaskApi.getTasks(dailyTask['id']);
+
+        bool task1 = false;
+        bool task2 = false;
+        bool task3 = false;
+        bool task4 = false;
+
+        for (final t in tasks) {
+          if (t['task_type'] == 'exercise' && t['completed'] == true) {
+            task1 = true;
+          }
+          if (t['task_type'] == 'water' && t['completed'] == true) {
+            task2 = true;
+          }
+          if (t['task_type'] == 'sleep' && t['completed'] == true) {
+            task3 = true;
+          }
+          if (t['task_type'] == 'mood' && t['completed'] == true) {
+            task4 = true;
+          }
+        }
+
         setState(() {
-          isTask1 =
-              taskData.containsKey('exerciseId') &&
-              taskData['exerciseId']['isTaskCompleted'] == true;
-
-          isTask2 =
-              taskData.containsKey('waterTaskId') &&
-              taskData['waterTaskId']['isTaskCompleted'] == true;
-
-          isTask3 =
-              taskData.containsKey('sleepTaskId') &&
-              taskData['sleepTaskId']['isTaskCompleted'] == true;
-
-          isTask4 =
-              taskData.containsKey('MoodId') &&
-              taskData['MoodId']['isTaskCompleted'] == true;
+          isTask1 = task1;
+          isTask2 = task2;
+          isTask3 = task3;
+          isTask4 = task4;
         });
       }
     } catch (e) {
@@ -335,30 +355,57 @@ class _Daily extends State<DailyPage> {
                             color: Colors.grey,
                           ),
                           onTap: () async {
-                            final taskData = await _firestoreService
-                                .getDailyTask(DateTime.now());
+                            final daily =
+                                await DailyTaskApi.getDailyTask(
+                                  DateTime.now(),
+                                ) ??
+                                await DailyTaskApi.ensureDailyTaskForToday();
+
+                            final dailyTaskId = daily['id']?.toString();
+                            if (dailyTaskId == null || dailyTaskId.isEmpty)
+                              return;
+
+                            final tasks = await DailyTaskApi.getTasks(
+                              dailyTaskId,
+                            );
+
+                            Map<String, dynamic>? exerciseTask;
+                            for (final t in tasks) {
+                              if (t['task_type'] == 'exercise') {
+                                exerciseTask = t;
+                                break;
+                              }
+                            }
+
+                            final String? valueText =
+                                (exerciseTask?['value_text'] as String?);
+                            final String? valueNumberStr =
+                                (exerciseTask?['value_number']?.toString());
+
+                            String initialName = '';
+                            String initialTime = '';
+                            if (valueText != null &&
+                                valueText.contains(' - ')) {
+                              final parts = valueText.split(' - ');
+                              initialName = parts.isNotEmpty ? parts[0] : '';
+                              initialTime = parts.length > 1 ? parts[1] : '';
+                            } else if (valueText != null) {
+                              initialName = valueText;
+                            }
 
                             showDialog(
                               context: context,
                               builder: (context) {
-                                final exercise = taskData?['exerciseId'];
                                 final nameController = TextEditingController(
-                                  text: exercise != null
-                                      ? exercise['type']
-                                      : '',
+                                  text: initialName,
                                 );
-                                final categoryController =
-                                    TextEditingController(
-                                      text: exercise != null
-                                          ? exercise['calories']
-                                          : '',
-                                    );
                                 final timeController = TextEditingController(
-                                  text: exercise != null
-                                      ? exercise['duration']
-                                      : '',
+                                  text: initialTime,
                                 );
-
+                                final caloriesController =
+                                    TextEditingController(
+                                      text: valueNumberStr ?? '',
+                                    );
                                 int hour = 0, minute = 0;
 
                                 return StatefulBuilder(
@@ -369,19 +416,18 @@ class _Daily extends State<DailyPage> {
                                       ),
                                       backgroundColor: Colors.white,
                                       title: Row(
-                                        children: [
+                                        children: const [
                                           Icon(
                                             Icons.fitness_center,
                                             color: Colors.green,
                                             size: 26,
                                           ),
-                                          const SizedBox(width: 8),
+                                          SizedBox(width: 8),
                                           Text(
                                             "การออกกำลังกายในวันนี้",
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 20,
-                                              color: Colors.black87,
                                             ),
                                           ),
                                         ],
@@ -390,12 +436,11 @@ class _Daily extends State<DailyPage> {
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            /// Exercise Type
                                             TextField(
                                               controller: nameController,
                                               decoration: InputDecoration(
                                                 labelText: "ประเภท",
-                                                prefixIcon: Icon(
+                                                prefixIcon: const Icon(
                                                   Icons.directions_run,
                                                 ),
                                                 filled: true,
@@ -408,15 +453,13 @@ class _Daily extends State<DailyPage> {
                                               ),
                                             ),
                                             const SizedBox(height: 15),
-
-                                            /// Calories Burned
                                             TextField(
-                                              controller: categoryController,
+                                              controller: caloriesController,
                                               keyboardType:
                                                   TextInputType.number,
                                               decoration: InputDecoration(
                                                 labelText: "แคลอรี่ที่เผาผลาญ",
-                                                prefixIcon: Icon(
+                                                prefixIcon: const Icon(
                                                   Icons.local_fire_department,
                                                 ),
                                                 filled: true,
@@ -429,15 +472,13 @@ class _Daily extends State<DailyPage> {
                                               ),
                                             ),
                                             const SizedBox(height: 15),
-
-                                            /// Duration Picker
                                             GestureDetector(
                                               onTap: () async {
                                                 int tempHour = hour;
                                                 int tempMinute = minute;
 
                                                 await showModalBottomSheet(
-                                                  shape: RoundedRectangleBorder(
+                                                  shape: const RoundedRectangleBorder(
                                                     borderRadius:
                                                         BorderRadius.vertical(
                                                           top: Radius.circular(
@@ -470,7 +511,7 @@ class _Daily extends State<DailyPage> {
                                                   controller: timeController,
                                                   decoration: InputDecoration(
                                                     labelText: "ระยะเวลา",
-                                                    prefixIcon: Icon(
+                                                    prefixIcon: const Icon(
                                                       Icons.timer,
                                                     ),
                                                     filled: true,
@@ -497,12 +538,9 @@ class _Daily extends State<DailyPage> {
                                           ),
                                       actions: [
                                         TextButton(
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Colors.grey[600],
-                                          ),
                                           onPressed: () =>
                                               Navigator.pop(context),
-                                          child: Text(
+                                          child: const Text(
                                             "ยกเลิก",
                                             style: TextStyle(
                                               color: Colors.black,
@@ -524,78 +562,65 @@ class _Daily extends State<DailyPage> {
                                           onPressed: () async {
                                             if (nameController.text
                                                     .trim()
-                                                    .isNotEmpty &&
-                                                categoryController.text
+                                                    .isEmpty ||
+                                                caloriesController.text
                                                     .trim()
-                                                    .isNotEmpty &&
+                                                    .isEmpty ||
                                                 timeController.text
                                                     .trim()
-                                                    .isNotEmpty) {
-                                              setState(() {
-                                                isTask1 = true;
-                                              });
-
-                                              final user = FirebaseAuth
-                                                  .instance
-                                                  .currentUser;
-                                              if (user == null) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'กรุณาล็อกอินก่อนบันทึกข้อมูล',
-                                                    ),
-                                                  ),
-                                                );
-                                                return;
-                                              }
-
-                                              final exerciseData = {
-                                                'exerciseId': {
-                                                  'type': nameController.text
-                                                      .trim(),
-                                                  'calories': categoryController
-                                                      .text
-                                                      .trim(),
-                                                  'duration':
-                                                      '$hour ชั่วโมง $minute นาที',
-                                                  'isTaskCompleted': true,
-                                                },
-                                              };
-
-                                              try {
-                                                await _firestoreService
-                                                    .saveDailyTask(
-                                                      exerciseData,
-                                                      DateTime.now(),
-                                                    );
-
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'บันทึกข้อมูลการออกกำลังกายสำเร็จ',
-                                                    ),
-                                                  ),
-                                                );
-                                              } catch (e) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'เกิดข้อผิดพลาด: $e',
-                                                    ),
-                                                  ),
-                                                );
-                                              }
+                                                    .isEmpty) {
+                                              return;
                                             }
 
-                                            Navigator.pop(context);
+                                            setState(() => isTask1 = true);
+
+                                            final exerciseData = {
+                                              'exercise': {
+                                                'task_type': 'exercise',
+                                                'value_text':
+                                                    '${nameController.text.trim()} - ${timeController.text.trim()}',
+                                                'value_number':
+                                                    double.tryParse(
+                                                      caloriesController.text
+                                                          .trim(),
+                                                    ) ??
+                                                    0.0,
+                                                'completed': true,
+                                              },
+                                            };
+
+                                            try {
+                                              await DailyTaskApi.saveDailyTask(
+                                                exerciseData,
+                                                DateTime.now(),
+                                              );
+                                              await loadDailyTasks();
+                                              if (!mounted) return;
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'บันทึกข้อมูลการออกกำลังกายสำเร็จ',
+                                                  ),
+                                                ),
+                                              );
+                                            } catch (e) {
+                                              if (!mounted) return;
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'เกิดข้อผิดพลาด: $e',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+
+                                            if (mounted) Navigator.pop(context);
                                           },
-                                          child: Text(
+                                          child: const Text(
                                             "บันทึก",
                                             style: TextStyle(
                                               fontSize: 16,
@@ -639,12 +664,33 @@ class _Daily extends State<DailyPage> {
                             color: Colors.grey,
                           ),
                           onTap: () async {
-                            final taskData = await _firestoreService
-                                .getDailyTask(DateTime.now());
+                            final daily =
+                                await DailyTaskApi.getDailyTask(
+                                  DateTime.now(),
+                                ) ??
+                                await DailyTaskApi.ensureDailyTaskForToday();
+
+                            final dailyTaskId = daily['id']?.toString();
+                            if (dailyTaskId == null || dailyTaskId.isEmpty)
+                              return;
+
+                            final tasks = await DailyTaskApi.getTasks(
+                              dailyTaskId,
+                            );
+
+                            Map<String, dynamic>? exerciseTask;
+                            for (final t in tasks) {
+                              if (t['task_type'] == 'exercise') {
+                                exerciseTask = t;
+                                break;
+                              }
+                            }
+
+                            final String? valueNumberStr =
+                                (exerciseTask?['value_number']?.toString());
+
                             final nameController = TextEditingController(
-                              text:
-                                  taskData?['waterTaskId']?['total_drink'] ??
-                                  '',
+                              text: valueNumberStr ?? '',
                             );
 
                             showDialog(
@@ -713,38 +759,27 @@ class _Daily extends State<DailyPage> {
                                               setState(() {
                                                 isTask2 = true;
                                               });
-                                              final user = FirebaseAuth
-                                                  .instance
-                                                  .currentUser;
-                                              if (user == null) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'กรุณาล็อกอินก่อนบันทึกข้อมูล',
-                                                    ),
-                                                  ),
-                                                );
-                                                return;
-                                              }
 
                                               final waterData = {
-                                                'waterTaskId': {
-                                                  'total_drink': nameController
-                                                      .text
-                                                      .trim(),
-                                                  'isTaskCompleted': true,
+                                                'water': {
+                                                  'task_type': 'water',
+                                                  'value_number':
+                                                      double.tryParse(
+                                                        nameController.text
+                                                            .trim(),
+                                                      ) ??
+                                                      0.0,
+                                                  'completed': true,
                                                 },
                                               };
 
                                               try {
-                                                await _firestoreService
-                                                    .saveDailyTask(
-                                                      waterData,
-                                                      DateTime.now(),
-                                                    );
-
+                                                await DailyTaskApi.saveDailyTask(
+                                                  waterData,
+                                                  DateTime.now(),
+                                                );
+                                                await loadDailyTasks();
+                                                if (!mounted) return;
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
@@ -755,6 +790,7 @@ class _Daily extends State<DailyPage> {
                                                   ),
                                                 );
                                               } catch (e) {
+                                                if (!mounted) return;
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
@@ -808,11 +844,26 @@ class _Daily extends State<DailyPage> {
                           onTap: () {
                             showSleepTrackingDialog(
                               context,
-                              onConfirmed: () {
+                              onConfirmed: () async {
                                 if (mounted) {
-                                  setState(() {
-                                    isTask3 = true;
-                                  });
+                                  setState(() => isTask3 = true);
+
+                                  final sleepData = {
+                                    'sleep': {
+                                      'task_type': 'sleep',
+                                      'completed': true,
+                                    },
+                                  };
+
+                                  try {
+                                    await DailyTaskApi.saveDailyTask(
+                                      sleepData,
+                                      DateTime.now(),
+                                    );
+                                    await loadDailyTasks();
+                                  } catch (e) {
+                                    print('Error saving sleep data: $e');
+                                  }
                                 }
                               },
                             );
@@ -846,11 +897,15 @@ class _Daily extends State<DailyPage> {
                               barrierDismissible: false,
                               builder: (context) {
                                 return MoodSelector(
-                                  onConfirmed: () {
+                                  onConfirmed: () async {
                                     if (mounted) {
-                                      setState(() {
-                                        isTask4 = true;
-                                      });
+                                      setState(() => isTask4 = true);
+                                      
+                                      try {
+                                        await loadDailyTasks();
+                                      } catch (e) {
+                                        print('Error saving mood data: $e');
+                                      }
                                     }
                                   },
                                 );
