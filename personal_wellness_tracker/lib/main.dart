@@ -54,10 +54,7 @@ void main() async {
   await initNotificationService();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => themeProvider,
-      child: MyApp(),
-    ),
+    ChangeNotifierProvider(create: (context) => themeProvider, child: MyApp()),
   );
 }
 
@@ -70,6 +67,7 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'Multi Page App',
+          debugShowCheckedModeBanner: false,
           home: const SplashScreen(),
           theme: ThemeData(
             useMaterial3: true,
@@ -77,30 +75,29 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.light, // Light theme
 
             bottomNavigationBarTheme: BottomNavigationBarThemeData(
-              unselectedIconTheme: IconThemeData(color: Colors.black), 
+              unselectedIconTheme: IconThemeData(color: Colors.black),
               unselectedItemColor: Colors.black, // Unselected item color
-              backgroundColor: Colors.white, 
+              backgroundColor: Colors.white,
             ),
 
             cardTheme: CardThemeData(
               color: Colors.white, // Dark card color
             ), // Dark card color
-
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.grey[900], // Dark background
             brightness: Brightness.dark, // Dark theme
-            
+
             appBarTheme: AppBarTheme(
               foregroundColor: Colors.white,
               backgroundColor: Color(0xFF79D7BE), // Dark app bar color
             ),
 
             bottomNavigationBarTheme: BottomNavigationBarThemeData(
-              unselectedIconTheme: IconThemeData(color: Colors.white), 
+              unselectedIconTheme: IconThemeData(color: Colors.white),
               unselectedItemColor: Colors.white, // Unselected item color
-              backgroundColor: Colors.grey[900], 
+              backgroundColor: Colors.grey[900],
             ),
 
             textTheme: TextTheme(
@@ -114,10 +111,10 @@ class MyApp extends StatelessWidget {
             cardTheme: CardThemeData(
               color: Colors.grey[800], // Dark card color
             ), // Dark card color
-
           ),
-          themeMode: themeProvider.themeMode, // Use themeMode from ThemeProvider
-          
+          themeMode:
+              themeProvider.themeMode, // Use themeMode from ThemeProvider
+
           initialRoute: 'Login,',
           routes: {
             '/main': (context) => MainScaffold(),

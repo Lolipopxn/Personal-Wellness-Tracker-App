@@ -1,40 +1,39 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_wellness_tracker/app/auth_service.dart';
+import '../services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  _RegisterPageState createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // Controllers for input fields
-  final TextEditingController controllerEmail = TextEditingController();
-  final TextEditingController controllerPassword = TextEditingController();
-  final formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
 
-  // State variables
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
   String errorMessage = '';
   bool _agreeToTerms = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    controllerEmail.dispose();
-    controllerPassword.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  // Register function
-  void register() async {
-    // Validate form fields
-    final isValid = formKey.currentState?.validate() ?? false;
+  Future<void> _register() async {
+    final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
 
-    // Check if terms are agreed
     if (!_agreeToTerms) {
       setState(() {
         errorMessage =
@@ -49,19 +48,30 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      await authService.value.createAccount(
-        email: controllerEmail.text.trim(),
-        password: controllerPassword.text.trim(),
+      final result = await AuthService.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        username: _usernameController.text.trim(),
       );
-      // Navigate to another page on success, e.g., back to login or to home
-      if (context.mounted) {
-        Navigator.of(
-          context,
-        ).pop(); // Go back to the previous screen (e.g., login)
+
+      if (result['success']) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Registration successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      } else {
+        setState(() {
+          errorMessage = result['message'] ?? 'Registration failed';
+        });
       }
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       setState(() {
-        errorMessage = e.message ?? 'An unknown error occurred.';
+        errorMessage = 'An error occurred: $e';
       });
     } finally {
       setState(() {
@@ -79,7 +89,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final titleFontSize = (screenWidth * 0.08).clamp(26.0, 40.0);
     final bodyFontSize = (screenWidth * 0.045).clamp(14.0, 18.0);
     final paddingHorizontal = screenWidth * 0.06;
-    final maxContentWidth = 500.0;
+    const maxContentWidth = 500.0;
 
     return Scaffold(
       body: SafeArea(
@@ -90,9 +100,9 @@ class _RegisterPageState extends State<RegisterPage> {
               vertical: 32,
             ),
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxContentWidth),
+              constraints: const BoxConstraints(maxWidth: maxContentWidth),
               child: Form(
-                key: formKey,
+                key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -106,8 +116,36 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
                     ),
-
                     SizedBox(height: screenHeight * 0.04),
+
+                    // Username
+                    Text(
+                      'Username *',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: bodyFontSize,
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        hintText: 'Choose a username',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter username';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: screenHeight * 0.03),
 
                     // Email
                     Text(
@@ -118,7 +156,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     TextFormField(
-                      controller: controllerEmail,
+                      controller: _emailController,
                       decoration: const InputDecoration(
                         hintText: 'Your email address',
                         hintStyle: TextStyle(color: Colors.grey),
@@ -131,10 +169,12 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
+                        if (value == null || value.isEmpty) {
                           return 'Please enter your email';
-                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value))
+                        }
+                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
                           return 'Invalid email';
+                        }
                         return null;
                       },
                     ),
@@ -149,7 +189,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     TextFormField(
-                      controller: controllerPassword,
+                      controller: _passwordController,
                       decoration: const InputDecoration(
                         hintText: 'Your password',
                         hintStyle: TextStyle(color: Colors.grey),
@@ -162,9 +202,45 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       obscureText: true,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please enter your password';
-                        if (value.length < 6) return 'At least 6 characters';
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter password';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: screenHeight * 0.03),
+
+                    // Confirm Password
+                    Text(
+                      'Confirm Password *',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: bodyFontSize,
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      decoration: const InputDecoration(
+                        hintText: 'Re-enter your password',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black),
+                        ),
+                      ),
+                      obscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please confirm password';
+                        }
+                        if (value != _passwordController.text) {
+                          return 'Passwords do not match';
+                        }
                         return null;
                       },
                     ),
@@ -202,7 +278,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
-                                      // TODO
+                                      // TODO: navigate to terms page
                                     },
                                 ),
                                 const TextSpan(text: ' and '),
@@ -213,7 +289,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
-                                      // TODO
+                                      // TODO: navigate to privacy page
                                     },
                                 ),
                                 const TextSpan(text: '.'),
@@ -242,7 +318,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : register,
+                        onPressed: _isLoading ? null : _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,
                           foregroundColor: Colors.white,
@@ -277,7 +353,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           style: TextStyle(fontSize: bodyFontSize),
                         ),
                         GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
+                          onTap: () =>
+                              Navigator.pushReplacementNamed(context, '/login'),
                           child: Text(
                             'Login',
                             style: TextStyle(

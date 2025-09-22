@@ -1,10 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_wellness_tracker/%E0%B9%8CNavigationBar/main_scaffold.dart';
-import 'package:personal_wellness_tracker/app/auth_service.dart';
-// import 'package:personal_wellness_tracker/pages/profile_widget.dart';
-import 'package:personal_wellness_tracker/pages/register_page.dart';
-// import 'package:personal_wellness_tracker/pages/home.dart';
+import 'package:personal_wellness_tracker/์NavigationBar/main_scaffold.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   final controllerPassword = TextEditingController();
   final formKey = GlobalKey<FormState>();
   String errorMessage = '';
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,31 +23,40 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void signIn() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+  Future<void> _login() async {
+    if (!(formKey.currentState?.validate() ?? false)) return;
+
+    setState(() {
+      _isLoading = true;
+      errorMessage = '';
+    });
 
     try {
-      await authService.value.signIn(
+      final result = await AuthService.login(
         email: controllerEmail.text.trim(),
         password: controllerPassword.text.trim(),
       );
 
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainScaffold()),
-          (route) => false,
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
       setState(() {
-        errorMessage = e.message ?? 'An unknown error occurred.';
+        _isLoading = false;
+      });
+
+      if (result['success']) {
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
+            (route) => false,
+          );
+        }
+      } else {
+        setState(() {
+          errorMessage = result['message'] ?? 'Login failed';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        errorMessage = 'An error occurred: $e';
       });
     }
   }
@@ -83,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(height: screenHeight * 0.03),
                         Center(
                           child: Icon(
-                            Icons.image_search,
+                            Icons.lock_outline,
                             size: iconSize,
                             color: Colors.grey.shade300,
                           ),
@@ -129,6 +135,11 @@ class _LoginPageState extends State<LoginPage> {
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email';
+                            }
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            ).hasMatch(value)) {
+                              return 'Please enter a valid email';
                             }
                             return null;
                           },
@@ -181,34 +192,34 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
-
+                        SizedBox(height: screenHeight * 0.01),
                         // Sign in button
-                        ElevatedButton(
-                          onPressed: () {
-                            if (formKey.currentState?.validate() ?? false) {
-                              signIn();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.arrow_forward),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Sign In',
-                                style: TextStyle(fontSize: bodyFontSize),
+                        _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : ElevatedButton(
+                                onPressed: _login,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.arrow_forward),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Sign In',
+                                      style: TextStyle(fontSize: bodyFontSize),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
                         SizedBox(height: screenHeight * 0.03),
 
                         // Register link
@@ -218,12 +229,7 @@ class _LoginPageState extends State<LoginPage> {
                             const Text("Don't have an account? "),
                             GestureDetector(
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const RegisterPage(),
-                                  ),
-                                );
+                                Navigator.pushNamed(context, '/register');
                               },
                               child: const Text(
                                 'Register',
@@ -233,57 +239,6 @@ class _LoginPageState extends State<LoginPage> {
                           ],
                         ),
                         SizedBox(height: screenHeight * 0.03),
-
-                        // Divider
-                        const Row(
-                          children: [
-                            Expanded(child: Divider(thickness: 1)),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'OR',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            ),
-                            Expanded(child: Divider(thickness: 1)),
-                          ],
-                        ),
-                        SizedBox(height: screenHeight * 0.03),
-
-                        // Social login
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.g_mobiledata, size: 28),
-                              onPressed: () {
-                                // TODO
-                              },
-                              style: IconButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade400),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.all(16),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            IconButton(
-                              icon: const Icon(Icons.apple, size: 28),
-                              onPressed: () {
-                                // TODO
-                              },
-                              style: IconButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade400),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.all(16),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
                       ],
                     ),
                   ),
