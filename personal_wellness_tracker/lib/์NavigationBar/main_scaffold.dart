@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart'; // ✅ ใช้ AuthService ของ FastAPI
+import '../services/auth_service.dart';
 
 import 'package:personal_wellness_tracker/pages/dashboard.dart';
 import 'package:personal_wellness_tracker/pages/daily_page.dart';
 import 'package:personal_wellness_tracker/pages/food_save.dart';
 import 'package:personal_wellness_tracker/pages/myProfile_page.dart';
-import 'package:personal_wellness_tracker/pages/statistics_page.dart';
+import 'package:personal_wellness_tracker/pages/progress_page.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -43,7 +43,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (currentIndex == 4 && index == 0) {
       // จะ refresh ใน Dashboard widget เอง
     }
-    
+
     setState(() {
       currentIndex = index;
     });
@@ -67,7 +67,8 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       const DailyPage(),
       const FoodSavePage(),
-      const StatisticsPage(),
+      // const StatisticsPage(),
+      const ProgressScreen(),
       const UserProfilePage(),
     ];
 

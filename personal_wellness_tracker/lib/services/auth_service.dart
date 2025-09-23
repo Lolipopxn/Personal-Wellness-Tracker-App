@@ -116,4 +116,40 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token') != null;
   }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    required String username,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+
+      if (token == null) {
+        return {'success': false, 'message': 'No token found'};
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/auth/update-profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'username': username}),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'data': data['data'],
+        };
+      } else {
+        return {'success': false, 'message': data['detail'] ?? 'Update failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
 }

@@ -18,18 +18,16 @@ def register_user(
     """
     Register a new user
     """
-    # Check if user already exists
+
     existing_user = db.query(models.User).filter(models.User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
-    # Hash password
+
     hashed_password = security.get_password_hash(user_data.password)
     
-    # Create new user
     user_id = str(uuid.uuid4())
     db_user = models.User(
         uid=user_id,
@@ -68,7 +66,7 @@ def login_user(
     """
     Login user and return access token
     """
-    # Authenticate user
+
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     
     if not user or not security.verify_password(form_data.password, user.password_hash):
@@ -153,7 +151,7 @@ def refresh_access_token(
                 detail="Invalid refresh token"
             )
         
-        # Verify user exists
+
         user = db.query(models.User).filter(models.User.uid == user_id).first()
         if not user:
             raise HTTPException(
@@ -161,7 +159,6 @@ def refresh_access_token(
                 detail="User not found"
             )
         
-        # Create new tokens
         new_access_token = security.create_access_token(data={"sub": user.uid})
         new_refresh_token = security.create_refresh_token(data={"sub": user.uid})
         
@@ -180,4 +177,36 @@ def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
+        )
+
+@router.put("/update-profile", response_model=schemas.StandardResponse)
+def update_profile(
+    update_data: schemas.UserUpdate, 
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(deps.get_current_active_user)]
+):
+    """
+    Update current user's profile (e.g., username)
+    """
+    try:
+        if update_data.username:
+            current_user.username = update_data.username
+
+        db.commit()
+        db.refresh(current_user)
+
+        return schemas.StandardResponse(
+            success=True,
+            message="Profile updated successfully",
+            data={
+                "user_id": current_user.uid,
+                "email": current_user.email,
+                "username": current_user.username
+            }
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update profile: {e}"
         )

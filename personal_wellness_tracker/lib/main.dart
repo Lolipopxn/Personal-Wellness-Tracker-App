@@ -10,6 +10,7 @@ import 'pages/setting_page.dart';
 import 'pages/all_logs_page.dart';
 import 'package:personal_wellness_tracker/์NavigationBar/main_scaffold.dart';
 import 'pages/Onboarding.dart';
+import 'pages/progress_page.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -129,6 +130,7 @@ class MyApp extends StatelessWidget {
             '/daily': (context) => DailyPage(),
             '/settings': (context) => SettingsPage(),
             '/all_logs': (context) => LogsScreen(),
+            '/progress': (context) => ProgressScreen(),
           },
         );
       },
