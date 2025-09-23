@@ -36,12 +36,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   String? _selectedGender;
   int _currentStepIndex = 0;
-  final int _totalSteps = 3;
+  final int _totalSteps = 4;
   List<bool>? _healthProblemsChecked;
   bool _otherChecked = false;
   String? _stepErrorMessage;
 
   final List<GlobalKey<FormState>> _formKeys = [
+    GlobalKey<FormState>(),
     GlobalKey<FormState>(),
     GlobalKey<FormState>(),
     GlobalKey<FormState>(),
@@ -436,6 +437,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               case 2:
                                 valid = _validateStep3();
                                 break;
+                              case 3:
+                                valid = _validateStep4();
+                                break;
                             }
                             if (!valid) return;
                             if (_currentStepIndex < _totalSteps - 1) {
@@ -478,83 +482,86 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Widget _buildStepProgressBar() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(_totalSteps * 2 - 1, (index) {
-        if (index.isEven) {
-          int step = index ~/ 2;
-          bool isActiveStep = step <= _currentStepIndex;
-          return Column(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isActiveStep ? Colors.green : Colors.white,
-                  border: Border.all(
-                    color: isActiveStep ? Colors.green : Colors.grey[400]!,
-                    width: 2,
-                  ),
-                  boxShadow: isActiveStep
-                      ? [
-                          BoxShadow(
-                            color: const Color.fromARGB(51, 76, 175, 80),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Center(
-                  child: Text(
-                    '${step + 1}',
-                    style: TextStyle(
-                      color: isActiveStep ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(_totalSteps * 2 - 1, (index) {
+          if (index.isEven) {
+            int step = index ~/ 2;
+            bool isActiveStep = step <= _currentStepIndex;
+            return Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isActiveStep ? Colors.green : Colors.white,
+                      border: Border.all(
+                        color: isActiveStep ? Colors.green : Colors.grey[400]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${step + 1}',
+                        style: TextStyle(
+                          color: isActiveStep ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getStepLabel(step),
+                    style: TextStyle(
+                      color: isActiveStep ? Colors.green : Colors.black54,
+                      fontSize: 10,
+                      fontWeight: isActiveStep
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            );
+          } else {
+            int leftStep = (index - 1) ~/ 2;
+            bool isLineActive = (leftStep + 1) <= _currentStepIndex;
+            return Expanded(
+              flex: 1,
+              child: Container(
+                height: 2,
+                margin: const EdgeInsets.only(bottom: 12, left: 4, right: 4),
+                decoration: BoxDecoration(
+                  color: isLineActive ? Colors.green : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(1),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                _getStepLabel(step),
-                style: TextStyle(
-                  color: isActiveStep ? Colors.green : Colors.black54,
-                  fontSize: 13,
-                  fontWeight: isActiveStep
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
-            ],
-          );
-        } else {
-          int leftStep = (index - 1) ~/ 2;
-          bool isLineActive = (leftStep + 1) <= _currentStepIndex;
-          return Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 18),
-            decoration: BoxDecoration(
-              color: isLineActive ? Colors.green : Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          );
-        }
-      }),
+            );
+          }
+        }),
+      ),
     );
   }
 
   String _getStepLabel(int index) {
     switch (index) {
       case 0:
-        return 'ข้อมูลพื้นฐาน';
+        return 'ข้อมูล\nพื้นฐาน';
       case 1:
-        return 'เป้าหมาย';
+        return 'เป้า\nหมาย';
       case 2:
-        return 'ประเมินสุขภาพ';
+        return 'ประเมิน\nสุขภาพ';
+      case 3:
+        return 'สรุป\nข้อมูล';
       default:
         return '';
     }
@@ -577,6 +584,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -795,7 +803,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
                       const SizedBox(height: 18),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Icon(Icons.local_drink, color: Colors.green),
                           const SizedBox(width: 10),
@@ -939,6 +946,331 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ],
           ),
         );
+      case 3:
+        return Form(
+          key: _formKeys[3],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'สรุปข้อมูลทั้งหมด',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Card สรุปข้อมูลพื้นฐาน
+              if (_ageController.text.isNotEmpty || 
+                  _selectedGender != null || 
+                  _weightController.text.isNotEmpty || 
+                  _heightController.text.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.green[700], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'ข้อมูลพื้นฐาน',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.green[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (_ageController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Icon(Icons.cake, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('อายุ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_ageController.text} ปี', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_selectedGender != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Icon(_selectedGender == 'male' ? Icons.male : 
+                                   _selectedGender == 'female' ? Icons.female : Icons.transgender, 
+                                   size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('เพศ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text(_selectedGender == 'male' ? 'ชาย' : 
+                                   _selectedGender == 'female' ? 'หญิง' : 'อื่นๆ', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_weightController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Icon(Icons.monitor_weight, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('น้ำหนัก: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_weightController.text} กก.', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_heightController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Icon(Icons.height, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('ส่วนสูง: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_heightController.text} ซม.', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              
+              // Card สรุปเป้าหมาย
+              if (_goalWeightController.text.isNotEmpty || 
+                  _goalExerciseController.text.isNotEmpty || 
+                  _goalExerciseMinutesController.text.isNotEmpty || 
+                  _goalWaterController.text.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.flag_outlined, color: Colors.blue[700], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'เป้าหมายที่ตั้งไว้',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (_goalWeightController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.monitor_weight, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('น้ำหนักเป้าหมาย: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_goalWeightController.text} กก.', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_goalExerciseController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.fitness_center, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('ออกกำลังกาย: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_goalExerciseController.text} ครั้ง/สัปดาห์', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_goalExerciseMinutesController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.timer, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('ระยะเวลา: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_goalExerciseMinutesController.text} นาที/วัน', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_goalWaterController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 0),
+                          child: Row(
+                            children: [
+                              Icon(Icons.local_drink, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('ดื่มน้ำ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_goalWaterController.text} แก้ว/วัน', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              
+              // Card สรุปข้อมูลสุขภาพ
+              if (_bpController.text.isNotEmpty || 
+                  _hrController.text.isNotEmpty || 
+                  (_healthProblemsChecked != null && _healthProblemsChecked!.any((checked) => checked)) ||
+                  _otherChecked)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.health_and_safety, color: Colors.orange[700], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'ข้อมูลสุขภาพที่บันทึกไว้',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.orange[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (_bpController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.bloodtype, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('ความดันโลหิต: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_bpController.text} mmHg', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_hrController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.favorite, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 8),
+                              Text('อัตราการเต้นหัวใจ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('${_hrController.text} ครั้ง/นาที', 
+                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      if (_healthProblemsChecked != null && _healthProblemsChecked!.any((checked) => checked))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.local_hospital, size: 16, color: Colors.grey[600]),
+                                  const SizedBox(width: 8),
+                                  Text('ปัญหาสุขภาพ: ', style: TextStyle(color: Colors.grey[600])),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  if (_healthProblemsChecked![0]) 
+                                    Chip(label: Text('โรคเบาหวาน'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  if (_healthProblemsChecked![1]) 
+                                    Chip(label: Text('โรคความดันโลหิตสูง'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  if (_healthProblemsChecked![2]) 
+                                    Chip(label: Text('โรคหัวใจ'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  if (_healthProblemsChecked![3]) 
+                                    Chip(label: Text('โรคไขมันในเลือดสูง'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  if (_healthProblemsChecked![4]) 
+                                    Chip(label: Text('โรคภูมิแพ้'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  if (_otherChecked && _otherProblemController!.text.isNotEmpty)
+                                    Chip(label: Text(_otherProblemController!.text), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              
+              // ข้อความยืนยันการกรอกข้อมูล
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.purple[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.purple[200]!),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.check_circle_outline, 
+                         color: Colors.purple[700], size: 40),
+                    const SizedBox(height: 12),
+                    Text(
+                      'ยืนยันข้อมูลที่กรอก',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.purple[700],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'กรุณาตรวจสอบข้อมูลทั้งหมดด้านบนให้ถูกต้อง หากต้องการแก้ไขสามารถกลับไปแก้ไขได้',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -986,6 +1318,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     return true;
   }
 
+  bool _validateStep4() {
+    // Stage สรุปข้อมูลไม่ต้อง validate อะไร
+    return true;
+  }
+
   Widget _buildTextField(
     String label,
     TextEditingController controller,
@@ -1001,14 +1338,60 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       enabled: enabled,
       validator: validator,
       inputFormatters: inputFormatters,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: enabled ? Colors.black87 : Colors.grey[600],
+      ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 15,
-          horizontal: 15,
+        labelStyle: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[700],
+          fontWeight: FontWeight.w500,
         ),
+        hintStyle: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[400],
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.green, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[200]!),
+        ),
+        filled: true,
+        fillColor: enabled ? Colors.white : Colors.grey[50],
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
+        ),
+        suffixIcon: controller.text.isNotEmpty
+            ? Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 20,
+              )
+            : null,
       ),
     );
   }
@@ -1139,83 +1522,117 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  Future<int?> _showCupertinoMinutesPicker(int initialValue) {
-    int tempValue = initialValue;
-    return showDialog<int>(
+  // ฟังก์ชันสำหรับ picker เลือกนาทีออกกำลังกาย
+  Future<int?> _showCupertinoMinutesPicker(int initialValue) async {
+    int selectedMinutes = initialValue;
+    return showModalBottomSheet<int>(
       context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 200,
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(
-                    initialItem: (initialValue ~/ 5).clamp(0, 59) - 1,
-                  ),
-                  itemExtent: 36,
-                  magnification: 1.1,
-                  onSelectedItemChanged: (index) {
-                    tempValue = (index + 1) * 5;
-                  },
-                  children: List.generate(
-                    60,
-                    (index) => Center(child: Text('${(index + 1) * 5} นาที')),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(tempValue),
-                  child: const Text("ตกลง"), // "Confirm"
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<int?> _showWaterCupPicker() {
-    return showDialog<int>(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: 300,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('ยกเลิก'),
+                ),
                 const Text(
-                  'เลือกจำนวนแก้วน้ำ',
+                  'เลือกระยะเวลาออกกำลังกาย',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: List.generate(12, (i) {
-                    final cupNum = i + 1;
-                    return GestureDetector(
-                      onTap: () => Navigator.of(context).pop(cupNum),
-                      child: CircleAvatar(radius: 24, child: Text('$cupNum')),
-                    );
-                  }),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, selectedMinutes),
+                  child: const Text('เลือก'),
                 ),
               ],
             ),
-          ),
-        );
-      },
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: 12, // 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180
+                itemBuilder: (context, index) {
+                  final minutes = (index + 1) * 15;
+                  return ListTile(
+                    title: Text('$minutes นาที'),
+                    trailing: selectedMinutes == minutes 
+                        ? const Icon(Icons.check, color: Colors.green) 
+                        : null,
+                    onTap: () {
+                      selectedMinutes = minutes;
+                      Navigator.pop(context, selectedMinutes);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ฟังก์ชันสำหรับ picker เลือกจำนวนแก้วน้ำ
+  Future<int?> _showWaterCupPicker() async {
+    int selectedCups = int.tryParse(_goalWaterController.text) ?? 8;
+    return showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: 300,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('ยกเลิก'),
+                ),
+                const Text(
+                  'เลือกจำนวนแก้วน้ำต่อวัน',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, selectedCups),
+                  child: const Text('เลือก'),
+                ),
+              ],
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: 15, // 1-15 แก้ว
+                itemBuilder: (context, index) {
+                  final cups = index + 1;
+                  return ListTile(
+                    leading: Icon(Icons.local_drink, color: Colors.blue[300]),
+                    title: Text('$cups แก้ว'),
+                    subtitle: Text('≈ ${(cups * 250).toStringAsFixed(0)} มล.'),
+                    trailing: selectedCups == cups 
+                        ? const Icon(Icons.check, color: Colors.green) 
+                        : null,
+                    onTap: () {
+                      selectedCups = cups;
+                      Navigator.pop(context, selectedCups);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
