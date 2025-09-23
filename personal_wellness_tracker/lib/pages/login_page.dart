@@ -88,10 +88,11 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         SizedBox(height: screenHeight * 0.03),
                         Center(
-                          child: Icon(
-                            Icons.lock_outline,
-                            size: iconSize,
-                            color: Colors.grey.shade300,
+                          child: Image.asset(
+                            'assets/images/heart-beat.png',
+                            width: iconSize,
+                            height: iconSize,
+                            fit: BoxFit.contain,
                           ),
                         ),
                         SizedBox(height: screenHeight * 0.03),
