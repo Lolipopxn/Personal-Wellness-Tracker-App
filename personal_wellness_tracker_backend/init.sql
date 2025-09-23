@@ -101,6 +101,9 @@ CREATE TABLE "tasks" (
   "value_text" text,
   "value_number" double precision,
   "completed" boolean DEFAULT false,
+  "task_quality" varchar,
+  "started_at" timestamp NOT NULL,
+  "ended_at" timestamp NOT NULL,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now())
 );

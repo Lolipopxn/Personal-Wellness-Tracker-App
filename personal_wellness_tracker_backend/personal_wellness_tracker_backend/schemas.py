@@ -45,10 +45,6 @@ class UserUpdate(BaseModel):
     heart_rate: Optional[int] = None
     health_problems: Optional[List[str]] = None
     profile_completed: Optional[bool] = None
-    goal_weight: Optional[float] = None
-    goal_exercise_frequency: Optional[int] = None
-    goal_exercise_minutes: Optional[int] = None
-    goal_water_intake: Optional[int] = None
 
 class User(UserBase):
     uid: str
@@ -145,6 +141,9 @@ class TaskBase(BaseModel):
     value_text: Optional[str] = None
     value_number: Optional[float] = None
     completed: bool = False
+    task_quality: Optional[str] = None
+    started_at: datetime
+    ended_at: datetime
 
 class TaskCreate(TaskBase):
     daily_task_id: str
@@ -154,6 +153,9 @@ class TaskUpdate(BaseModel):
     value_text: Optional[str] = None
     value_number: Optional[float] = None
     completed: Optional[bool] = None
+    task_quality: Optional[str] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
 
 class Task(TaskBase):
     id: str
@@ -240,6 +242,18 @@ class UserPreference(UserPreferenceBase):
 
     class Config:
         from_attributes = True
+
+# Health Info schemas (สำหรับข้อมูลสุขภาพที่อาจจะเก็บใน preferences หรือใช้แยกต่างหาก)
+class HealthInfoBase(BaseModel):
+    health_problems: Optional[List[str]] = None
+    blood_pressure: Optional[str] = None
+    heart_rate: Optional[int] = None
+
+class HealthInfoCreate(HealthInfoBase):
+    user_id: str
+
+class HealthInfoUpdate(HealthInfoBase):
+    pass
 
 # App Statistics schemas
 class AppStatisticsBase(BaseModel):

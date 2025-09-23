@@ -131,6 +131,9 @@ class Task(Base):
     value_text = Column(Text)
     value_number = Column(Float)
     completed = Column(Boolean, default=False)
+    task_quality = Column(String)
+    started_at = Column(DateTime, nullable=False)
+    ended_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
