@@ -28,11 +28,6 @@ def update_user(db: Session, user_id: str, user_update: schemas.UserUpdate):
     if db_user:
         update_data = user_update.dict(exclude_unset=True)
         
-        # แยกข้อมูล goals ออกจาก update_data เพื่อไม่ให้ไปอยู่ใน users table
-        goals_fields = ['goal_weight', 'goal_exercise_frequency', 'goal_exercise_minutes', 'goal_water_intake']
-        for field in goals_fields:
-            update_data.pop(field, None)
-        
         for field, value in update_data.items():
             setattr(db_user, field, value)
         db_user.updated_at = datetime.utcnow()

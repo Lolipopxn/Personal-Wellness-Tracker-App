@@ -1,8 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
+import uuid
+import os
+from pathlib import Path
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine, get_db
@@ -83,6 +87,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create uploads directory if it doesn't exist
+upload_dir = Path("uploads")
+upload_dir.mkdir(exist_ok=True)
+(upload_dir / "meals").mkdir(exist_ok=True)
+
+# Mount static files for serving uploaded images
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
+
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 
@@ -155,38 +167,10 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user)
 ):
-    # แยกข้อมูล goals ออกจาก user_update
-    goals_data = {}
-    if user_update.goal_weight is not None:
-        goals_data['goal_weight'] = user_update.goal_weight
-    if user_update.goal_exercise_frequency is not None:
-        goals_data['goal_exercise_frequency'] = user_update.goal_exercise_frequency
-    if user_update.goal_exercise_minutes is not None:
-        goals_data['goal_exercise_minutes'] = user_update.goal_exercise_minutes
-    if user_update.goal_water_intake is not None:
-        goals_data['goal_water_intake'] = user_update.goal_water_intake
-    
     # อัปเดตข้อมูลผู้ใช้
     db_user = crud.update_user(db, user_id=user_id, user_update=user_update)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # ถ้ามีข้อมูล goals ให้อัปเดตใน user_goals table ด้วย
-    if goals_data:
-        try:
-            # หา goal ที่ active อยู่หรือสร้างใหม่
-            existing_goals = crud.get_user_goals(db, user_id=user_id, active_only=True)
-            
-            if existing_goals:
-                # อัปเดต goal ที่มีอยู่
-                goal_update = schemas.UserGoalUpdate(**goals_data)
-                crud.update_user_goal(db, goal_id=existing_goals[0].id, goal_update=goal_update)
-            else:
-                # สร้าง goal ใหม่
-                goal_create = schemas.UserGoalCreate(user_id=user_id, **goals_data)
-                crud.create_user_goal(db=db, goal=goal_create)
-        except Exception as e:
-            print(f"Warning: Failed to update user goals: {e}")
     
     return db_user
 
@@ -320,6 +304,74 @@ def delete_meal(
     if db_meal is None:
         raise HTTPException(status_code=404, detail="Meal not found")
     return {"message": "Meal deleted successfully"}
+
+# Image upload endpoint for meals
+@app.post("/meals/upload-image/", response_model=schemas.ImageUploadResponse, tags=["Meals"])
+async def upload_meal_image(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Upload รูปภาพอาหาร"""
+    
+    # ตรวจสอบประเภทไฟล์
+    allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail="Only JPEG, PNG, JPG, and WebP images are allowed"
+        )
+    
+    # ตรวจสอบขนาดไฟล์ (จำกัดที่ 5MB)
+    content = await file.read()
+    file_size = len(content)
+    
+    if file_size > 5 * 1024 * 1024:  # 5MB
+        raise HTTPException(
+            status_code=400, 
+            detail="File size must be less than 5MB"
+        )
+    
+    # สร้างชื่อไฟล์ใหม่
+    file_extension = file.filename.split(".")[-1] if file.filename else "jpg"
+    unique_filename = f"{current_user.uid}_{uuid.uuid4()}.{file_extension}"
+    
+    # สร้างโฟลเดอร์ถ้ายังไม่มี
+    upload_dir = Path("uploads/meals")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # บันทึกไฟล์
+    file_path = upload_dir / unique_filename
+    with open(file_path, "wb") as buffer:
+        buffer.write(content)
+    
+    # สร้าง URL สำหรับเข้าถึงรูปภาพ
+    image_url = f"/static/meals/{unique_filename}"
+    
+    return schemas.ImageUploadResponse(
+        image_url=image_url,
+        file_size=file_size,
+        file_type=file.content_type,
+        uploaded_at=datetime.utcnow()
+    )
+
+@app.get("/meals/{meal_id}/image", tags=["Meals"])
+async def get_meal_image(
+    meal_id: str,
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """ดึงรูปภาพอาหาร"""
+    
+    meal = crud.get_meal(db, meal_id=meal_id)
+    
+    if not meal or meal.user_id != current_user.uid:
+        raise HTTPException(status_code=404, detail="Meal not found")
+    
+    if not meal.image_url:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    return {"image_url": meal.image_url}
 
 # Daily Task endpoints
 @app.post("/users/{user_id}/daily-tasks/", response_model=schemas.DailyTask, tags=["Daily Tasks"])

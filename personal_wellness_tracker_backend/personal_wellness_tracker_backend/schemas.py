@@ -121,6 +121,22 @@ class Meal(MealBase):
     class Config:
         from_attributes = True
 
+# Schema สำหรับการอัปโหลดรูปภาพ
+class ImageUploadResponse(BaseModel):
+    image_url: str
+    file_size: int
+    file_type: str
+    uploaded_at: datetime
+
+# Schema สำหรับ meal พร้อมข้อมูลโภชนาการ (ถ้าต้องการ)
+class MealWithNutrition(Meal):
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
+    fiber: Optional[float] = None
+    sugar: Optional[float] = None
+
 # Daily Task schemas
 class DailyTaskBase(BaseModel):
     date: date
