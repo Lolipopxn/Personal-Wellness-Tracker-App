@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../app/daily_task_api.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key, required this.onNavigate});
@@ -227,71 +228,30 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> loadDailyTasks() async {
     try {
-      final taskData = await _apiService.getDailyTask(DateTime.now());
-      print("DEBUG: Task data received: $taskData"); // Debug line
+      final today = DateTime.now();
+      final dailyTask = await DailyTaskApi.getDailyTask(today);
+      print("DEBUG: Daily task data received: $dailyTask");
 
-      if (taskData != null) {
+      if (dailyTask != null && dailyTask['id'] != null) {
+        final dailyTaskId = dailyTask['id'].toString();
+        final tasks = await DailyTaskApi.getTasks(dailyTaskId);
+        print("DEBUG: Tasks list received: $tasks");
+
         setState(() {
-          // รองรับทั้ง FastAPI และ Firebase structure
-          if (taskData["mood_score"] != null) {
-            // FastAPI structure
-            mood = taskData["mood_score"]?.toString() ?? 'N/A';
-            _exerciseData = {
-              "type": "Exercise",
-              "duration": "${taskData["exercise_minutes"] ?? 0} นาที",
-              "calories": "-",
-              "isTaskCompleted": (taskData["exercise_minutes"] ?? 0) > 0,
-            };
-            _sleepData = {
-              "sleepTime": "-",
-              "wakeTime": "-",
-              "sleepQuality": "-",
-              "isTaskCompleted": (taskData["sleep_hours"] ?? 0) > 0,
-            };
-            _waterData = {
-              "isTaskCompleted": (taskData["water_glasses"] ?? 0) > 0,
-            };
-          } else {
-            // Firebase structure (สำหรับข้อมูลเก่า)
-            mood = taskData["MoodId"]?["mood"] ?? 'N/A';
-            _exerciseData = taskData["exerciseId"] ?? {
-              "type": "-",
-              "duration": "-",
-              "calories": "-",
-              "isTaskCompleted": false,
-            };
-            _sleepData = taskData["sleepTaskId"] ?? {
-              "sleepTime": "-",
-              "wakeTime": "-",
-              "sleepQuality": "-",
-              "isTaskCompleted": false,
-            };
-            _waterData = taskData["waterTaskId"] ?? {
-              "isTaskCompleted": false,
-            };
-          }
+          
+          // Parse tasks data
+          _parseTasksData(tasks);
+        });
+      } else {
+        // ไม่มีข้อมูล daily task
+        setState(() {
+          _setDefaultTaskData();
         });
       }
     } catch (e) {
       print("เกิดข้อผิดพลาดในการโหลดข้อมูล: $e");
-      // ตั้งค่าเริ่มต้นในกรณีที่เกิด error
       setState(() {
-        mood = 'N/A';
-        _exerciseData = {
-          "type": "-",
-          "duration": "-",
-          "calories": "-",
-          "isTaskCompleted": false,
-        };
-        _sleepData = {
-          "sleepTime": "-",
-          "wakeTime": "-",
-          "sleepQuality": "-",
-          "isTaskCompleted": false,
-        };
-        _waterData = {
-          "isTaskCompleted": false,
-        };
+        _setDefaultTaskData();
       });
     }
   }
@@ -358,6 +318,122 @@ class _DashboardState extends State<Dashboard> {
     } else {
       return "ควรปรับปรุง";
     }
+  }
+
+  void _parseTasksData(List<Map<String, dynamic>> tasks) {
+    // หาข้อมูลแต่ละประเภท task
+    Map<String, dynamic>? exerciseTask;
+    Map<String, dynamic>? waterTask;
+    Map<String, dynamic>? sleepTask;
+    Map<String, dynamic>? moodTask;
+
+    for (final task in tasks) {
+      final taskType = task['task_type']?.toString();
+      switch (taskType) {
+        case 'exercise':
+          exerciseTask = task;
+          break;
+        case 'water':
+          waterTask = task;
+          break;
+        case 'sleep':
+          sleepTask = task;
+          break;
+        case 'mood':
+          moodTask = task;
+          break;
+      }
+    }
+
+    // อัปเดตข้อมูล exercise
+    if (exerciseTask != null) {
+      _exerciseData = {
+        "type": exerciseTask['value_text'] ?? 'การออกกำลังกาย',
+        "duration": exerciseTask['value_number'] != null 
+            ? "${exerciseTask['value_number'].toInt()} นาที" 
+            : '-',
+        "calories": "-", // อาจจะคำนวณจาก duration หรือเก็บแยก
+        "isTaskCompleted": exerciseTask['completed'] == true,
+      };
+    } else {
+      _exerciseData = {
+        "type": "-",
+        "duration": "-",
+        "calories": "-",
+        "isTaskCompleted": false,
+      };
+    }
+
+    // อัปเดตข้อมูล water
+    if (waterTask != null) {
+      _waterData = {
+        "glasses": waterTask['value_number']?.toInt() ?? 0,
+        "isTaskCompleted": waterTask['completed'] == true,
+      };
+    } else {
+      _waterData = {
+        "glasses": 0,
+        "isTaskCompleted": false,
+      };
+    }
+
+    // อัปเดตข้อมูล sleep
+    if (sleepTask != null) {
+      final startedAt = sleepTask['started_at'] != null 
+          ? DateTime.tryParse(sleepTask['started_at']) 
+          : null;
+      final endedAt = sleepTask['ended_at'] != null 
+          ? DateTime.tryParse(sleepTask['ended_at']) 
+          : null;
+      
+      _sleepData = {
+        "sleepTime": startedAt != null 
+            ? "${startedAt.hour.toString().padLeft(2, '0')}:${startedAt.minute.toString().padLeft(2, '0')}" 
+            : '-',
+        "wakeTime": endedAt != null 
+            ? "${endedAt.hour.toString().padLeft(2, '0')}:${endedAt.minute.toString().padLeft(2, '0')}" 
+            : '-',
+        "sleepQuality": sleepTask['task_quality'] ?? '-',
+        "sleepHours": sleepTask['value_number']?.toStringAsFixed(1) ?? '-',
+        "isTaskCompleted": sleepTask['completed'] == true,
+      };
+    } else {
+      _sleepData = {
+        "sleepTime": "-",
+        "wakeTime": "-",
+        "sleepQuality": "-",
+        "sleepHours": "-",
+        "isTaskCompleted": false,
+      };
+    }
+
+    // อัปเดตข้อมูล mood
+    if (moodTask != null) {
+      mood = moodTask['value_text'] ?? 'N/A';
+    } else {
+      mood = 'N/A';
+    }
+  }
+
+  void _setDefaultTaskData() {
+    mood = 'N/A';
+    _exerciseData = {
+      "type": "-",
+      "duration": "-",
+      "calories": "-",
+      "isTaskCompleted": false,
+    };
+    _sleepData = {
+      "sleepTime": "-",
+      "wakeTime": "-",
+      "sleepQuality": "-",
+      "sleepHours": "-",
+      "isTaskCompleted": false,
+    };
+    _waterData = {
+      "glasses": 0,
+      "isTaskCompleted": false,
+    };
   }
 
   Widget _buildDailyTaskItem({
@@ -450,11 +526,6 @@ class _DashboardState extends State<Dashboard> {
               _exerciseData?["duration"] ?? '-',
             ),
             _buildInfoRow(
-              Icons.local_fire_department,
-              "แคลอรี่",
-              _exerciseData?["calories"] ?? '-',
-            ),
-            _buildInfoRow(
               _exerciseData?["isTaskCompleted"] == true
                   ? Icons.check_circle
                   : Icons.cancel,
@@ -471,6 +542,11 @@ class _DashboardState extends State<Dashboard> {
         _buildSectionCard(
           title: "ข้อมูลการดื่มน้ำ",
           children: [
+            _buildInfoRow(
+              Icons.local_drink,
+              "จำนวนแก้ว",
+              "${_waterData?["glasses"] ?? 0} แก้ว",
+            ),
             _buildInfoRow(
               _waterData?["isTaskCompleted"] == true
                   ? Icons.check_circle
@@ -497,6 +573,13 @@ class _DashboardState extends State<Dashboard> {
               Icons.wb_sunny,
               "ตื่นนอน",
               _sleepData?["wakeTime"] ?? '-',
+            ),
+            _buildInfoRow(
+              Icons.access_time,
+              "ชั่วโมงการนอน",
+              _sleepData?["sleepHours"] != null && _sleepData!["sleepHours"] != '-'
+                  ? "${_sleepData!["sleepHours"]} ชั่วโมง"
+                  : '-',
             ),
             _buildInfoRow(
               Icons.star,
