@@ -848,18 +848,7 @@ class _Daily extends State<DailyPage> {
                                 if (mounted) {
                                   setState(() => isTask3 = true);
 
-                                  final sleepData = {
-                                    'sleep': {
-                                      'task_type': 'sleep',
-                                      'completed': true,
-                                    },
-                                  };
-
                                   try {
-                                    await DailyTaskApi.saveDailyTask(
-                                      sleepData,
-                                      DateTime.now(),
-                                    );
                                     await loadDailyTasks();
                                   } catch (e) {
                                     print('Error saving sleep data: $e');

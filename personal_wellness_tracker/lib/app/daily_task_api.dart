@@ -243,6 +243,9 @@ class DailyTaskApi {
       String? valueText;
       double? valueNumber;
       bool completed = false;
+      String? taskQuality;
+      DateTime? startedAt;
+      DateTime? endedAt;
 
       if (value is Map<String, dynamic>) {
         valueText = value['value_text']?.toString();
@@ -250,10 +253,23 @@ class DailyTaskApi {
           valueNumber = (value['value_number'] as num).toDouble();
         }
         completed = value['completed'] == true;
+
+        taskQuality = value['task_quality']?.toString();
+
+        if (value['started_at'] != null) {
+          startedAt = DateTime.tryParse(value['started_at'].toString());
+        }
+
+        if (value['ended_at'] != null) {
+          endedAt = DateTime.tryParse(value['ended_at'].toString());
+        } 
       } else {
         valueText = value is String ? value : null;
         valueNumber = value is num ? value.toDouble() : null;
         completed = value is bool ? value : false;
+        taskQuality = value is String ? value : null;
+        startedAt = null;
+        endedAt = null;
       }
 
       final taskBody = jsonEncode({
@@ -262,6 +278,9 @@ class DailyTaskApi {
         'value_text': valueText,
         'value_number': valueNumber,
         'completed': completed,
+        'task_quality': taskQuality,
+        'started_at': startedAt?.toIso8601String(),
+        'ended_at': endedAt?.toIso8601String(),
       });
 
       final taskRes = await http
@@ -299,7 +318,6 @@ class DailyTaskApi {
       if (tasksRes.statusCode == 200) {
         final decoded = jsonDecode(tasksRes.body);
 
-        // รองรับทั้งกรณี backend คืนเป็น List ตรง ๆ หรือห่อใน { data: [...] }
         final List<dynamic> tasksListDynamic = decoded is List
             ? decoded
             : (decoded is Map<String, dynamic> && decoded['data'] is List
@@ -356,6 +374,9 @@ class DailyTaskApi {
     String? valueText;
     double? valueNumber;
     bool completed = false;
+    String? taskQuality;
+    DateTime? startedAt;
+    DateTime? endedAt;
 
     if (value is Map<String, dynamic>) {
       valueText = value['value_text']?.toString();
@@ -363,10 +384,22 @@ class DailyTaskApi {
         valueNumber = (value['value_number'] as num).toDouble();
       }
       completed = value['completed'] == true;
+
+      taskQuality = value['task_quality']?.toString();
+
+      if (value['started_at'] != null) {
+        startedAt = DateTime.tryParse(value['started_at'].toString());
+      }
+      if (value['ended_at'] != null) {
+        endedAt = DateTime.tryParse(value['ended_at'].toString());
+      } 
     } else {
       valueText = value is String ? value : null;
       valueNumber = value is num ? value.toDouble() : null;
       completed = value is bool ? value : false;
+      taskQuality = value is String ? value : null;
+      startedAt = null;
+      endedAt = null;
     }
 
     final updateUrl = _api('/tasks/$taskId');
@@ -375,6 +408,9 @@ class DailyTaskApi {
       'value_text': valueText,
       'value_number': valueNumber,
       'completed': completed,
+      'task_quality': taskQuality,
+      'started_at': startedAt?.toIso8601String(),
+      'ended_at': endedAt?.toIso8601String(),
     });
 
     final updateRes = await http
@@ -437,6 +473,36 @@ class DailyTaskApi {
     } catch (e) {
       print('Error getting tasks: $e');
       return [];
+    }
+  }
+
+  // =========================
+  //  GET specific task by type and date
+  // =========================
+  static Future<Map<String, dynamic>?> getTaskForDate({
+    required String taskType,
+    required DateTime date,
+  }) async {
+    final token = await _getAccessToken();
+    final userId = await _getUserId();
+    if (token == null || userId == null) return null;
+
+    try {
+      final dailyTask = await getDailyTask(date);
+      if (dailyTask == null || dailyTask['id'] == null) return null;
+
+      final dailyTaskId = dailyTask['id'].toString();
+      final tasks = await getTasks(dailyTaskId);
+
+      for (final task in tasks) {
+        if (task['task_type'] == taskType) {
+          return task;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error getting task for date: $e');
+      return null;
     }
   }
 }
