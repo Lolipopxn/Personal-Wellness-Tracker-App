@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../main.dart'; // Import your main.dart to access ThemeProvider
-import '../app/firestore_service.dart';
+
+import '../main.dart'; // ThemeProvider
+import '../services/auth_service.dart';
 import '../app/notification_service.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -14,9 +14,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final FirestoreService _firestoreService = FirestoreService();
-  User? _user;
-  Map<String, dynamic>? _firestoreUserData;
+  Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool notificationsEnabled = true;
 
@@ -28,35 +26,53 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadAllUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    _user = FirebaseAuth.instance.currentUser;
-    if (_user != null) {
-      await _user?.reload();
-      _user = FirebaseAuth.instance.currentUser;
-      _firestoreUserData = await _firestoreService.getUserData();
-    }
-
+    final result = await AuthService.getCurrentUser();
     if (mounted) {
       setState(() {
+        if (result['success']) {
+          _userData = result['user'];
+        } else {
+          _userData = {};
+        }
         _isLoading = false;
       });
     }
   }
 
+  Future<void> _updateUsername(String newUsername) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final result = await AuthService.updateProfile(username: newUsername);
+
+    if (mounted) Navigator.pop(context); // close loading
+
+    if (result['success']) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("อัปเดตชื่อผู้ใช้สำเร็จ")));
+      _loadAllUserData();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? "อัปเดตไม่สำเร็จ")),
+      );
+    }
+  }
+
   Future<void> _saveDarkModePreference(bool value) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isDarkMode', value);
   }
 
   Future<void> _loadNotificationSetting() async {
     final prefs = await SharedPreferences.getInstance();
-    bool savedValue = prefs.getBool('notificationsEnabled') ?? true;
-    setState(() {
-      notificationsEnabled = savedValue;
-    });
+    final savedValue = prefs.getBool('notificationsEnabled') ?? true;
+    setState(() => notificationsEnabled = savedValue);
   }
 
   @override
@@ -73,10 +89,8 @@ class _SettingsPageState extends State<SettingsPage> {
       context,
     ).appBarTheme.backgroundColor;
 
-    final String username =
-        _firestoreUserData?['username'] ?? _user?.displayName ?? "ไม่ทราบชื่อ";
-    final String? photoUrl =
-        _firestoreUserData?['profileImageUrl'] ?? _user?.photoURL;
+    final String username = _userData?['username'] ?? "ไม่ทราบชื่อ";
+    final String email = _userData?['email'] ?? "ไม่ทราบอีเมล";
 
     return Scaffold(
       appBar: AppBar(
@@ -90,18 +104,13 @@ class _SettingsPageState extends State<SettingsPage> {
           child: ListView(
             children: [
               ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: photoUrl != null
-                      ? NetworkImage(photoUrl)
-                      : null,
-                  child: photoUrl == null ? const Icon(Icons.person) : null,
-                ),
+                leading: const CircleAvatar(child: Icon(Icons.person)),
                 title: Text(
                   username,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 subtitle: Text(
-                  _user?.email ?? "ไม่ทราบอีเมล",
+                  email,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 trailing: IconButton(
@@ -128,33 +137,12 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           TextButton(
                             child: const Text("บันทึก"),
-                            onPressed: () async {
+                            onPressed: () {
                               final newUsername = usernameController.text
                                   .trim();
                               if (newUsername.isNotEmpty) {
-                                Navigator.pop(context);
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                  barrierDismissible: false,
-                                );
-                                try {
-                                  await _user?.updateDisplayName(newUsername);
-                                  await _firestoreService.updateUserData({
-                                    'username': newUsername,
-                                  });
-                                  await _loadAllUserData();
-                                  if (mounted) Navigator.pop(context);
-                                } catch (e) {
-                                  if (mounted) Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text("เกิดข้อผิดพลาด: $e"),
-                                    ),
-                                  );
-                                }
+                                Navigator.pop(context); // close dialog
+                                _updateUsername(newUsername);
                               }
                             },
                           ),
@@ -182,7 +170,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: notificationsEnabled,
                 onChanged: (val) async {
                   setState(() => notificationsEnabled = val);
-
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('notificationsEnabled', val);
                   await initNotificationService();
@@ -190,142 +177,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.health_and_safety),
-                title: const Text("ตั้งค่าสุขภาพ"),
-                onTap: () async {
-                  await Navigator.pushNamed(context, '/profile');
-                  // อาจจะต้อง refresh ข้อมูลในหน้า settings ถ้าจำเป็น
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.lock),
-                title: const Text("เปลี่ยนรหัสผ่าน"),
-                onTap: () {
-                  final currentPasswordController = TextEditingController();
-                  final newPasswordController = TextEditingController();
-
-                  String? currentPasswordError;
-                  String? newPasswordError;
-
-                  showDialog(
-                    context: context,
-                    builder: (_) {
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return AlertDialog(
-                            title: const Text("เปลี่ยนรหัสผ่าน"),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextField(
-                                  controller: currentPasswordController,
-                                  decoration: InputDecoration(
-                                    labelText: "รหัสผ่านปัจจุบัน",
-                                    errorText: currentPasswordError,
-                                  ),
-                                  obscureText: true,
-                                ),
-                                TextField(
-                                  controller: newPasswordController,
-                                  decoration: InputDecoration(
-                                    labelText: "รหัสผ่านใหม่",
-                                    errorText: newPasswordError,
-                                  ),
-                                  obscureText: true,
-                                ),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("ยกเลิก"),
-                              ),
-                              TextButton(
-                                onPressed: () async {
-                                  final currentPassword =
-                                      currentPasswordController.text;
-                                  final newPassword =
-                                      newPasswordController.text;
-
-                                  setState(() {
-                                    currentPasswordError = null;
-                                    newPasswordError = null;
-                                  });
-
-                                  if (currentPassword.isEmpty ||
-                                      newPassword.isEmpty) {
-                                    setState(() {
-                                      if (currentPassword.isEmpty) {
-                                        currentPasswordError =
-                                            "กรุณากรอกรหัสผ่านปัจจุบัน";
-                                      }
-                                      if (newPassword.isEmpty) {
-                                        newPasswordError =
-                                            "กรุณากรอกรหัสผ่านใหม่";
-                                      }
-                                    });
-                                    return;
-                                  }
-
-                                  try {
-                                    final user =
-                                        FirebaseAuth.instance.currentUser;
-                                    final cred = EmailAuthProvider.credential(
-                                      email: user!.email!,
-                                      password: currentPassword,
-                                    );
-                                    await user.reauthenticateWithCredential(
-                                      cred,
-                                    );
-
-                                    await user.updatePassword(newPassword);
-
-                                    Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
-                                      ),
-                                    );
-
-                                    await FirebaseAuth.instance.signOut();
-
-                                    if (!mounted) return;
-                                    Navigator.of(
-                                      context,
-                                    ).pushNamedAndRemoveUntil(
-                                      '/login',
-                                      (route) => false,
-                                    );
-                                  } on FirebaseAuthException catch (e) {
-                                    setState(() {
-                                      if (e.code == 'wrong-password' ||
-                                          e.code == 'user-mismatch' ||
-                                          e.code == 'invalid-credential') {
-                                        currentPasswordError =
-                                            "รหัสผ่านปัจจุบันไม่ถูกต้อง";
-                                      } else if (e.code == 'weak-password') {
-                                        newPasswordError =
-                                            "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
-                                      }
-                                    });
-                                  }
-                                },
-                                child: const Text("บันทึก"),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
                 leading: const Icon(Icons.logout),
                 title: const Text("ออกจากระบบ"),
                 onTap: () async {
-                  await FirebaseAuth.instance.signOut();
+                  await AuthService.logout();
                   if (!mounted) return;
                   Navigator.of(
                     context,
