@@ -29,7 +29,8 @@ class UserBase(BaseModel):
     weight: Optional[float] = None
     height: Optional[float] = None
     blood_pressure: Optional[str] = None
-    health_problems: Optional[str] = None
+    heart_rate: Optional[int] = None
+    health_problems: Optional[List[str]] = None
 
 class UserCreate(UserBase):
     uid: str
@@ -41,8 +42,13 @@ class UserUpdate(BaseModel):
     weight: Optional[float] = None
     height: Optional[float] = None
     blood_pressure: Optional[str] = None
-    health_problems: Optional[str] = None
+    heart_rate: Optional[int] = None
+    health_problems: Optional[List[str]] = None
     profile_completed: Optional[bool] = None
+    goal_weight: Optional[float] = None
+    goal_exercise_frequency: Optional[int] = None
+    goal_exercise_minutes: Optional[int] = None
+    goal_water_intake: Optional[int] = None
 
 class User(UserBase):
     uid: str

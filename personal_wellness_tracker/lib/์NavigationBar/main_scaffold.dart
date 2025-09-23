@@ -45,6 +45,12 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _onItemTapped(int index) {
+    // ถ้าเป็นการเปลี่ยนจากหน้า Profile (index 4) ไปหน้า Dashboard (index 0)
+    // ให้ refresh ข้อมูลใน dashboard
+    if (currentIndex == 4 && index == 0) {
+      // จะ refresh ใน Dashboard widget เอง
+    }
+    
     setState(() {
       currentIndex = index;
     });

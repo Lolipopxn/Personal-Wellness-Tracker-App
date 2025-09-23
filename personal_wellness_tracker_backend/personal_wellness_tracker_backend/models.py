@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Text, ForeignKey, Enum
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Text, ForeignKey, Enum, ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -51,7 +51,8 @@ class User(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     blood_pressure = Column(String)
-    health_problems = Column(Text)
+    heart_rate = Column(Integer)
+    health_problems = Column(ARRAY(String))
     saved_days_count = Column(Integer, default=0)
     day_streak = Column(Integer, default=0)
     last_updated = Column(DateTime, default=func.now())

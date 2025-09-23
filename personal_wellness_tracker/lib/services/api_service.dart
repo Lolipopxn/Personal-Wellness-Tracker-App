@@ -1,0 +1,509 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class ApiService {
+  // ใช้ localhost สำหรับ web browser
+  // ใช้ 10.0.2.2 สำหรับ Android Emulator  
+  // ใช้ IP address ของเครื่อง (เช่น 192.168.1.100) สำหรับ physical device
+  static const String baseUrl = 'http://10.0.2.2:8000'; // Android Emulator
+  // static const String baseUrl = 'http://localhost:8000'; // Web browser
+  // static const String baseUrl = 'http://192.168.1.100:8000'; // Physical device
+  
+  // Get stored token
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
+  }
+  
+  // Save token
+  Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('access_token', token);
+  }
+  
+  // Get headers with authorization
+  Future<Map<String, String>> getHeaders() async {
+    final token = await getToken();
+    print("DEBUG: Token found: ${token != null ? 'Yes' : 'No'}"); // Debug line
+    if (token != null) {
+      print("DEBUG: Token preview: ${token.substring(0, 20)}..."); // Debug line
+    }
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+  
+  // Register user
+  Future<Map<String, dynamic>> registerUser({
+    required String email,
+    required String password,
+    required String username,
+  }) async {
+    try {
+      print('Registering user: $email, $username');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          'username': username,
+        }),
+      );
+      
+      print('Register response status: ${response.statusCode}');
+      print('Register response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Registration failed: ${response.body}');
+      }
+    } catch (e) {
+      print('Registration error: $e');
+      throw Exception('Network error: $e');
+    }
+  }
+  
+  // Login user
+  Future<Map<String, dynamic>> loginUser({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await saveToken(data['access_token']);
+        return data;
+      } else {
+        print('Login failed with status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Login failed: ${response.body}');
+      }
+    } catch (e) {
+      print('Login error: $e');
+      throw Exception('Network error: $e');
+    }
+  }
+  
+  // Create user profile
+  Future<Map<String, dynamic>> createUserProfile({
+    required String userId,
+    required Map<String, dynamic> profileData,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/'),
+        headers: headers,
+        body: jsonEncode({
+          'uid': userId,
+          'email': profileData['email'],
+          'username': profileData['username'],
+          'age': profileData['age'],
+          'gender': profileData['gender'],
+          'weight': profileData['weight'],
+          'height': profileData['height'],
+          'blood_pressure': profileData['blood_pressure'],
+          'heart_rate': profileData['heart_rate'],
+          'health_problems': profileData['health_problems'],
+          'profile_completed': profileData['profile_completed'] ?? true,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Profile creation failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+  
+  // Create user goals
+  Future<Map<String, dynamic>> createUserGoals({
+    required String userId,
+    required Map<String, dynamic> goals,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/$userId/goals/'),
+        headers: headers,
+        body: jsonEncode({
+          'user_id': userId,
+          'goal_weight': goals['goal_weight'],
+          'goal_exercise_frequency': goals['goal_exercise_frequency'],
+          'goal_exercise_minutes': goals['goal_exercise_minutes'],
+          'goal_water_intake': goals['goal_water_intake'],
+          'is_active': true,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Goals creation failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+  
+  // Create user preferences (health info)
+  Future<Map<String, dynamic>> createUserPreferences({
+    required String userId,
+    required Map<String, dynamic> healthInfo,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/$userId/preferences/'),
+        headers: headers,
+        body: jsonEncode({
+          'health_conditions': healthInfo['healthProblems'],
+          'blood_pressure': healthInfo['bloodPressure'],
+          'heart_rate': healthInfo['heartRate'],
+          'notification_enabled': true,
+          'privacy_level': 'private',
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Preferences creation failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+  
+  // Get current user info
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    try {
+      final headers = await getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/me'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to get user info: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+  
+  // Logout
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+  }
+
+  // Save daily task
+  Future<Map<String, dynamic>> saveDailyTask({
+    required Map<String, dynamic> taskData,
+    required DateTime dateTime,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final String date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/tasks/'),
+        headers: headers,
+        body: jsonEncode({
+          'task_date': date,
+          'mood_score': taskData['mood'],
+          'sleep_hours': taskData['sleep'],
+          'exercise_minutes': taskData['exercise'],
+          'water_glasses': taskData['water'],
+          'notes': taskData['notes'] ?? '',
+          'is_completed': true,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Task save failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Get daily task
+  Future<Map<String, dynamic>?> getDailyTask(DateTime dateTime) async {
+    try {
+      final headers = await getHeaders();
+      final String date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/tasks/$date'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 404) {
+        return null;
+      } else {
+        throw Exception('Failed to get task: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Add food log
+  Future<Map<String, dynamic>> addFoodLog({
+    required String date,
+    required Map<String, dynamic> mealData,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/food-logs/'),
+        headers: headers,
+        body: jsonEncode({
+          'log_date': date,
+          'meal_type': mealData['mealType'],
+          'food_name': mealData['foodName'],
+          'quantity': mealData['quantity'] ?? 1,
+          'calories': mealData['calories'],
+          'protein': mealData['protein'] ?? 0,
+          'carbs': mealData['carbs'] ?? 0,
+          'fat': mealData['fat'] ?? 0,
+          'notes': mealData['notes'] ?? '',
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Food log failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Get food logs for date
+  Future<List<Map<String, dynamic>>> getFoodLogsForDate(String date) async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/food-logs/$date'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Update food log
+  Future<Map<String, dynamic>> updateFoodLog({
+    required String foodLogId,
+    required Map<String, dynamic> mealData,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/food-logs/$foodLogId'),
+        headers: headers,
+        body: jsonEncode({
+          'meal_type': mealData['mealType'],
+          'food_name': mealData['foodName'],
+          'quantity': mealData['quantity'] ?? 1,
+          'calories': mealData['calories'],
+          'protein': mealData['protein'] ?? 0,
+          'carbs': mealData['carbs'] ?? 0,
+          'fat': mealData['fat'] ?? 0,
+          'notes': mealData['notes'] ?? '',
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Food log update failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Delete food log
+  Future<void> deleteFoodLog(String foodLogId) async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.delete(
+        Uri.parse('$baseUrl/food-logs/$foodLogId'),
+        headers: headers,
+      );
+      
+      if (response.statusCode != 200) {
+        throw Exception('Food log deletion failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Get all logs (tasks and food)
+  Future<Map<String, dynamic>> fetchAllLogs() async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/logs/all'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to fetch logs: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Get saved days count
+  Future<int> getSavedDaysCount() async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/stats/saved-days'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['count'] ?? 0;
+      } else {
+        return 0;
+      }
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Get streak count
+  Future<int> getStreakCount() async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/stats/streak'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['streak'] ?? 0;
+      } else {
+        return 0;
+      }
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Update user profile
+  Future<Map<String, dynamic>> updateUserProfile({
+    required String userId,
+    required Map<String, dynamic> profileData,
+  }) async {
+    final headers = await getHeaders();
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId'),
+      headers: headers,
+      body: jsonEncode(profileData),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to update user profile: ${response.body}');
+    }
+  }
+
+  // Update user goals
+  Future<Map<String, dynamic>> updateUserGoals({
+    required String userId,
+    required Map<String, dynamic> goals,
+  }) async {
+    final headers = await getHeaders();
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId/goals'),
+      headers: headers,
+      body: jsonEncode({
+        'goal_weight': goals['goal_weight'],
+        'goal_exercise_frequency': goals['goal_exercise_frequency'],
+        'goal_exercise_minutes': goals['goal_exercise_minutes'],
+        'goal_water_intake': goals['goal_water_intake'],
+        'is_active': true,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to update user goals: ${response.body}');
+    }
+  }
+
+  // Update user preferences
+  Future<Map<String, dynamic>> updateUserPreferences({
+    required String userId,
+    required Map<String, dynamic> healthInfo,
+  }) async {
+    final headers = await getHeaders();
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId/preferences'),
+      headers: headers,
+      body: jsonEncode(healthInfo),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to update user preferences: ${response.body}');
+    }
+  }
+}

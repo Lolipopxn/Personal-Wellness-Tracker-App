@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
-import 'package:personal_wellness_tracker/pages/home.dart';
+import '../services/api_service.dart';
 
 class Profile extends StatelessWidget {
   const Profile({super.key});
@@ -22,9 +20,8 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final ApiService _apiService = ApiService();
 
-  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
@@ -38,7 +35,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   TextEditingController? _otherProblemController;
 
   String? _selectedGender;
-  int _selectedWaterCups = 0;
   int _currentStepIndex = 0;
   final int _totalSteps = 3;
   List<bool>? _healthProblemsChecked;
@@ -52,8 +48,108 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final currentUser = await _apiService.getCurrentUser();
+      print("DEBUG: Loading user data: $currentUser"); // Debug line
+      if (mounted) {
+        setState(() {
+          // โหลดข้อมูลพื้นฐาน
+          _ageController.text = currentUser['age']?.toString() ?? '';
+          _selectedGender = currentUser['gender'];
+          _weightController.text = currentUser['weight']?.toString() ?? '';
+          _heightController.text = currentUser['height']?.toString() ?? '';
+          
+          // โหลดข้อมูลเป้าหมาย (ถ้ามี)
+          if (currentUser['goals'] != null) {
+            final goals = currentUser['goals'];
+            _goalWeightController.text = goals['goal_weight']?.toString() ?? goals['weight']?.toString() ?? '';
+            _goalExerciseController.text = goals['goal_exercise_frequency']?.toString() ?? goals['exerciseFrequency']?.toString() ?? '';
+            _goalExerciseMinutesController.text = goals['goal_exercise_minutes']?.toString() ?? goals['exerciseMinutes']?.toString() ?? '';
+            _goalWaterController.text = goals['goal_water_intake']?.toString() ?? goals['waterIntake']?.toString() ?? '';
+          }
+          
+          // โหลดข้อมูลสุขภาพ (ถ้ามี)
+          if (currentUser['preferences'] != null) {
+            final prefs = currentUser['preferences'];
+            _bpController.text = prefs['bloodPressure'] ?? '';
+            _hrController.text = prefs['heartRate']?.toString() ?? '';
+          }
+          
+          // รองรับข้อมูลจาก FastAPI structure
+          if (currentUser['blood_pressure'] != null) {
+            _bpController.text = currentUser['blood_pressure'];
+          }
+          if (currentUser['heart_rate'] != null) {
+            _hrController.text = currentUser['heart_rate'].toString();
+          }
+          
+          // โหลดปัญหาสุขภาพ
+          _loadHealthProblems(currentUser);
+        });
+      }
+    } catch (e) {
+      print("Error loading user data: $e");
+    }
+  }
+
+  void _loadHealthProblems(Map<String, dynamic> currentUser) {
+    final List<String> problemsOptions = [
+      'โรคเบาหวาน',
+      'โรคความดันโลหิตสูง',
+      'โรคหัวใจ',
+      'โรคไขมันในเลือดสูง',
+      'โรคภูมิแพ้',
+    ];
+    
+    // Initialize checklist if not already done
+    if (_healthProblemsChecked == null) {
+      _healthProblemsChecked = List.generate(problemsOptions.length, (index) => false);
+      _otherProblemController = TextEditingController();
+      _otherChecked = false;
+    }
+    
+    // Load existing health problems
+    List<String>? existingProblems;
+    
+    // Try to get from direct field first (FastAPI structure)
+    if (currentUser['health_problems'] is String && currentUser['health_problems'].isNotEmpty) {
+      // Split string by comma and clean up
+      existingProblems = currentUser['health_problems'].split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } else if (currentUser['health_problems'] is List) {
+      existingProblems = currentUser['health_problems'].cast<String>();
+    }
+    // Try from preferences (alternative structure)
+    else if (currentUser['preferences'] != null) {
+      if (currentUser['preferences']['healthProblems'] is String && currentUser['preferences']['healthProblems'].isNotEmpty) {
+        existingProblems = currentUser['preferences']['healthProblems'].split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      } else if (currentUser['preferences']['healthProblems'] is List) {
+        existingProblems = currentUser['preferences']['healthProblems'].cast<String>();
+      }
+    }
+    
+    if (existingProblems != null && existingProblems.isNotEmpty) {
+      for (String problem in existingProblems) {
+        // Check if it's one of the predefined problems
+        int index = problemsOptions.indexOf(problem);
+        if (index != -1) {
+          _healthProblemsChecked![index] = true;
+        } else {
+          // It's a custom problem
+          _otherChecked = true;
+          _otherProblemController?.text = problem;
+        }
+      }
+    }
+  }
+
+  @override
   void dispose() {
-    _usernameController.dispose();
     _ageController.dispose();
     _weightController.dispose();
     _heightController.dispose();
@@ -75,11 +171,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('กรุณาล็อกอินก่อนทำการบันทึกข้อมูล');
-      }
-
+      final currentUser = await _apiService.getCurrentUser();
+      print("DEBUG: Current user data: $currentUser"); // Debug line
+      
       final List<String> problemsList = [];
       final List<String> problemsOptions = [
         'โรคเบาหวาน',
@@ -99,28 +193,100 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         problemsList.add(_otherProblemController!.text.trim());
       }
 
-      final Map<String, dynamic> userProfileData = {
-        'username': _usernameController.text.trim(),
+      final String userId = currentUser['uid']?.toString() ?? currentUser['id']?.toString() ?? '';
+      print("DEBUG: Using userId: $userId"); // Debug line
+      print("DEBUG: Health problems list: $problemsList"); // Debug line
+
+      // Update user profile (ข้อมูลพื้นฐานเท่านั้น - ไปที่ users table)
+      final userProfileData = {
+        'email': currentUser['email'],
         'age': int.tryParse(_ageController.text),
-        'gender': _selectedGender,
+        'gender': _selectedGender?.toLowerCase(), // แปลงเป็น lowercase
         'weight': double.tryParse(_weightController.text),
         'height': double.tryParse(_heightController.text),
-        'goals': {
-          'weight': double.tryParse(_goalWeightController.text),
-          'exerciseFrequency': int.tryParse(_goalExerciseController.text),
-          'exerciseMinutes': int.tryParse(_goalExerciseMinutesController.text),
-          'waterIntake': int.tryParse(_goalWaterController.text),
-        },
-        'healthInfo': {
-          'bloodPressure': _bpController.text.trim(),
-          'heartRate': int.tryParse(_hrController.text),
-          'healthProblems': problemsList,
-        },
-        'profileCompleted': true,
+        'blood_pressure': _bpController.text.trim(),
+        'heart_rate': int.tryParse(_hrController.text),
+        'health_problems': problemsList, // ส่งเป็น array สำหรับ PostgreSQL
+        'profile_completed': true,
       };
+      
+      print("DEBUG: User profile data to send: $userProfileData"); // Debug line
 
-      await user.updateDisplayName(_usernameController.text.trim());
-      await _firestoreService.saveUserProfile(userProfileData);
+      // Update user goals (ข้อมูลเป้าหมาย - ไปที่ user_goals table แยกต่างหาก)
+      final userGoalsData = {
+        'goal_weight': double.tryParse(_goalWeightController.text),
+        'goal_exercise_frequency': int.tryParse(_goalExerciseController.text),
+        'goal_exercise_minutes': int.tryParse(_goalExerciseMinutesController.text),
+        'goal_water_intake': int.tryParse(_goalWaterController.text),
+      };
+      
+      print("DEBUG: User goals data to send: $userGoalsData"); // Debug line
+
+      // Update health info
+      final healthInfoData = {
+        'healthProblems': problemsList,
+        'bloodPressure': _bpController.text.trim(),
+        'heartRate': int.tryParse(_hrController.text),
+      };
+      
+      print("DEBUG: Health info data to send: $healthInfoData"); // Debug line
+
+      // ส่งข้อมูลไป 3 ที่แยกกัน:
+      // 1. อัปเดตข้อมูลพื้นฐานใน users table
+      try {
+        await _apiService.updateUserProfile(
+          userId: userId,
+          profileData: userProfileData,
+        );
+        print("DEBUG: User profile updated successfully");
+      } catch (e) {
+        print("DEBUG: Failed to update user profile: $e");
+        throw e; // Re-throw เพื่อให้ทำงานต่อไปยัง catch block ด้านนอก
+      }
+      
+      // 2. อัปเดตข้อมูลเป้าหมายใน user_goals table
+      try {
+        await _apiService.createUserGoals(
+          userId: userId,
+          goals: userGoalsData,
+        );
+        print("DEBUG: User goals created successfully");
+      } catch (e) {
+        // ถ้า create ไม่ได้ อาจเป็นเพราะมีอยู่แล้ว ลอง update
+        print("DEBUG: Goals create failed, trying update: $e");
+        try {
+          await _apiService.updateUserGoals(
+            userId: userId,
+            goals: userGoalsData,
+          );
+          print("DEBUG: User goals updated successfully");
+        } catch (updateError) {
+          print("DEBUG: Failed to update user goals: $updateError");
+          // ไม่ throw error เพราะไม่ใช่ข้อมูลสำคัญมาก
+        }
+      }
+      
+      // 3. อัปเดตข้อมูลสุขภาพใน user_preferences table
+      try {
+        await _apiService.createUserPreferences(
+          userId: userId,
+          healthInfo: healthInfoData,
+        );
+        print("DEBUG: User preferences created successfully");
+      } catch (e) {
+        // ถ้า create ไม่ได้ อาจเป็นเพราะมีอยู่แล้ว ลอง update
+        print("DEBUG: Preferences create failed, trying update: $e");
+        try {
+          await _apiService.updateUserPreferences(
+            userId: userId,
+            healthInfo: healthInfoData,
+          );
+          print("DEBUG: User preferences updated successfully");
+        } catch (updateError) {
+          print("DEBUG: Failed to update user preferences: $updateError");
+          // ไม่ throw error เพราะไม่ใช่ข้อมูลสำคัญมาก
+        }
+      }
 
       if (mounted) Navigator.of(context).pop();
 
@@ -137,7 +303,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               Icon(Icons.check_circle, color: Colors.green, size: 60),
               SizedBox(height: 18),
               Text(
-                'บันทึกข้อมูลสำเร็จ',
+                'อัปเดตข้อมูลสำเร็จ',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ],
@@ -150,10 +316,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const HomePage()),
-                  );
+                  Navigator.of(context).pop(); // ปิด dialog สำเร็จ
+                  Navigator.of(context).pop(true); // กลับไปหน้าก่อนหน้าพร้อมส่งค่า true เพื่อ refresh
                 },
                 child: const Text('ตกลง'),
               ),
@@ -165,7 +329,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (mounted) Navigator.of(context).pop();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาดในการบันทึก: $e')));
+      ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปเดต: $e')));
     }
   }
 
@@ -173,10 +337,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Registration'),
+        title: const Text('แก้ไขข้อมูลส่วนตัว'),
         backgroundColor: Colors.white,
         elevation: 0,
-        toolbarHeight: 0,
+        toolbarHeight: 60,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop(true); // ส่งค่า true เพื่อ refresh dashboard
+          },
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -223,10 +393,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (_currentStepIndex == 0) {
-                              // ถ้าอยู่ stage 1 (index 0) ให้กลับไปหน้า home
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(builder: (_) => const HomePage()),
-                              );
+                              // ถ้าอยู่ stage 1 (index 0) ให้กลับไปหน้าก่อนหน้า
+                              Navigator.of(context).pop(true); // ส่งค่า true เพื่อ refresh
                             } else if (_currentStepIndex > 0) {
                               setState(() {
                                 _stepErrorMessage = null;
@@ -290,7 +458,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           child: Text(
                             _currentStepIndex < _totalSteps - 1
                                 ? 'ถัดไป'
-                                : 'บันทึก',
+                                : 'อัปเดตข้อมูล',
                             style: const TextStyle(
                               fontSize: 16,
                               color: Colors.white,
@@ -424,18 +592,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildTextField(
-                        'ชื่อผู้ใช้ (Username)',
-                        _usernameController,
-                        TextInputType.name,
-                        validator: (v) {
-                          if (v == null || v.isEmpty)
-                            return 'กรุณากรอกชื่อผู้ใช้';
-                          if (v.length < 4) return 'ต้องมีอย่างน้อย 4 ตัวอักษร';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-                      _buildTextField(
                         'อายุ (ปี)',
                         _ageController,
                         TextInputType.number,
@@ -461,16 +617,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _genderSelectButton('Male', Icons.male),
+                            child: _genderSelectButton('male', Icons.male),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _genderSelectButton('Female', Icons.female),
+                            child: _genderSelectButton('female', Icons.female),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: _genderSelectButton(
-                              'Other',
+                              'other',
                               Icons.transgender,
                             ),
                           ),
@@ -649,7 +805,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 final selected = await _showWaterCupPicker();
                                 if (selected != null) {
                                   setState(() {
-                                    _selectedWaterCups = selected;
                                     _goalWaterController.text = selected
                                         .toString();
                                   });
@@ -898,9 +1053,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              gender == 'Male'
+              gender == 'male'
                   ? 'ชาย'
-                  : gender == 'Female'
+                  : gender == 'female'
                   ? 'หญิง'
                   : 'อื่นๆ',
               style: TextStyle(

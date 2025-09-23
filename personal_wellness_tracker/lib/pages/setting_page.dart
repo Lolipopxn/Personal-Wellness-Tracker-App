@@ -192,8 +192,9 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.health_and_safety),
                 title: const Text("ตั้งค่าสุขภาพ"),
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile');
+                onTap: () async {
+                  await Navigator.pushNamed(context, '/profile');
+                  // อาจจะต้อง refresh ข้อมูลในหน้า settings ถ้าจำเป็น
                 },
               ),
               ListTile(

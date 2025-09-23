@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../app/firestore_service.dart';
+import '../services/api_service.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key, required this.onNavigate});
@@ -11,7 +10,7 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final ApiService _apiService = ApiService();
   Map<String, dynamic>? _userData;
   Map<String, dynamic>? _exerciseData;
   Map<String, dynamic>? _sleepData;
@@ -30,23 +29,181 @@ class _DashboardState extends State<Dashboard> {
     loadDailyTasks();
   }
 
+  @override
+  void didUpdateWidget(Dashboard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Refresh ข้อมูลเมื่อ widget ถูกอัปเดต (เช่น กลับมาจากหน้าอื่น)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        refreshAllData();
+      }
+    });
+  }
+
+  // Method สำหรับ refresh ข้อมูลทั้งหมด
+  Future<void> refreshAllData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    await Future.wait([
+      _fetchUserData(),
+      loadData(),
+      loadDailyTasks(),
+    ]);
+  }
+
   Future<void> _fetchUserData() async {
     try {
-      final data = await _firestoreService.getUserData();
+      // ตรวจสอบ token ก่อน
+      final token = await _apiService.getToken();
+      if (token == null) {
+        throw Exception('No token found - need to login');
+      }
+      
+      final data = await _apiService.getCurrentUser();
+      print("DEBUG: User data received: $data"); // Debug line
       if (mounted) {
         setState(() {
           _userData = data;
           _isLoading = false;
         });
+        
+        // ตรวจสอบข้อมูลที่จำเป็นและส่งไปหน้า profile หากข้อมูลไม่ครบ
+        _checkAndRedirectToProfile();
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = "เกิดข้อผิดพลาดในการดึงข้อมูล: $e";
-          _isLoading = false;
-        });
+      print("DEBUG: Error fetching user data: $e"); // Debug line
+      
+      // ถ้าเป็น error "Not Found" หรือไม่มี token แสดงว่าต้อง login ใหม่
+      if (e.toString().contains('Not Found') || 
+          e.toString().contains('Unauthorized') ||
+          e.toString().contains('No token found')) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = "กรุณาเข้าสู่ระบบใหม่";
+            _isLoading = false;
+          });
+          
+          // นำทางไปหน้า login
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/login');
+            }
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = "เกิดข้อผิดพลาดในการดึงข้อมูล: $e";
+            _isLoading = false;
+          });
+        }
       }
     }
+  }
+
+  void _checkAndRedirectToProfile() {
+    if (_userData == null) return;
+    
+    // ตรวจสอบข้อมูลที่จำเป็น
+    final bool hasBasicInfo = _userData!['age'] != null && 
+                             _userData!['weight'] != null && 
+                             _userData!['height'] != null;
+    
+    // ตรวจสอบข้อมูลสุขภาพเพิ่มเติม
+    String bloodPressure = 'N/A';
+    int? heartRate;
+    
+    // ลองดึงข้อมูลจาก FastAPI structure ก่อน
+    if (_userData!['blood_pressure'] != null) {
+      bloodPressure = _userData!['blood_pressure'];
+    }
+    if (_userData!['heart_rate'] != null) {
+      heartRate = _userData!['heart_rate'];
+    }
+    
+    // ถ้าไม่มี ลองดึงจาก Firebase structure (สำหรับข้อมูลเก่า)
+    if (bloodPressure == 'N/A' && _userData!['healthInfo'] != null) {
+      final healthInfo = _userData!['healthInfo'];
+      bloodPressure = healthInfo['bloodPressure'] ?? 'N/A';
+      heartRate = healthInfo['heartRate'];
+    }
+    
+    final bool hasHealthInfo = bloodPressure != 'N/A' && heartRate != null;
+    
+    // หากข้อมูลไม่ครบ ให้ไปหน้า profile
+    if (!hasBasicInfo || !hasHealthInfo) {
+      _showIncompleteDataDialog();
+    }
+  }
+
+  void _showIncompleteDataDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true, // เปลี่ยนให้สามารถปิด dialog ได้โดยการแตะข้างนอก
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('ข้อมูลไม่ครบถ้วน'),
+            ],
+          ),
+          content: const Text(
+            'พบว่าข้อมูลส่วนตัวของคุณยังไม่ครบถ้วน กรุณากรอกข้อมูลให้ครบถ้วนเพื่อให้ระบบสามารถประเมินสุขภาพได้อย่างแม่นยำ\n\n'
+            'ข้อมูลที่จำเป็น:\n'
+            '• อายุ, น้ำหนัก, ส่วนสูง\n'
+            '• ความดันโลหิต\n'
+            '• อัตราเต้นหัวใจ',
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // ปิด dialog
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[300],
+                      foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('ยกเลิก'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop(); // ปิด dialog
+                      
+                      // นำทางไปหน้า profile และรอผลตอบกลับ
+                      final result = await Navigator.pushNamed(context, '/profile');
+                      
+                      // ถ้ากลับมาแล้ว ให้ refresh ข้อมูล
+                      if (result == true || result == null) {
+                        await refreshAllData();
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: const Color(0xFF79D7BE),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('ไปกรอกข้อมูล'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void updateGoal(int days) {
@@ -61,7 +218,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> loadData() async {
-    int count = await _firestoreService.getStreakCount();
+    int count = await _apiService.getStreakCount();
     setState(() {
       savedDays = count;
       updateGoal(count);
@@ -70,18 +227,72 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> loadDailyTasks() async {
     try {
-      final taskData = await _firestoreService.getDailyTask(DateTime.now());
+      final taskData = await _apiService.getDailyTask(DateTime.now());
+      print("DEBUG: Task data received: $taskData"); // Debug line
 
       if (taskData != null) {
         setState(() {
-          mood = taskData["MoodId"]["mood"] ?? 'N/A';
-          _exerciseData = taskData["exerciseId"];
-          _sleepData = taskData["sleepTaskId"];
-          _waterData = taskData["waterTaskId"];
+          // รองรับทั้ง FastAPI และ Firebase structure
+          if (taskData["mood_score"] != null) {
+            // FastAPI structure
+            mood = taskData["mood_score"]?.toString() ?? 'N/A';
+            _exerciseData = {
+              "type": "Exercise",
+              "duration": "${taskData["exercise_minutes"] ?? 0} นาที",
+              "calories": "-",
+              "isTaskCompleted": (taskData["exercise_minutes"] ?? 0) > 0,
+            };
+            _sleepData = {
+              "sleepTime": "-",
+              "wakeTime": "-",
+              "sleepQuality": "-",
+              "isTaskCompleted": (taskData["sleep_hours"] ?? 0) > 0,
+            };
+            _waterData = {
+              "isTaskCompleted": (taskData["water_glasses"] ?? 0) > 0,
+            };
+          } else {
+            // Firebase structure (สำหรับข้อมูลเก่า)
+            mood = taskData["MoodId"]?["mood"] ?? 'N/A';
+            _exerciseData = taskData["exerciseId"] ?? {
+              "type": "-",
+              "duration": "-",
+              "calories": "-",
+              "isTaskCompleted": false,
+            };
+            _sleepData = taskData["sleepTaskId"] ?? {
+              "sleepTime": "-",
+              "wakeTime": "-",
+              "sleepQuality": "-",
+              "isTaskCompleted": false,
+            };
+            _waterData = taskData["waterTaskId"] ?? {
+              "isTaskCompleted": false,
+            };
+          }
         });
       }
     } catch (e) {
       print("เกิดข้อผิดพลาดในการโหลดข้อมูล: $e");
+      // ตั้งค่าเริ่มต้นในกรณีที่เกิด error
+      setState(() {
+        mood = 'N/A';
+        _exerciseData = {
+          "type": "-",
+          "duration": "-",
+          "calories": "-",
+          "isTaskCompleted": false,
+        };
+        _sleepData = {
+          "sleepTime": "-",
+          "wakeTime": "-",
+          "sleepQuality": "-",
+          "isTaskCompleted": false,
+        };
+        _waterData = {
+          "isTaskCompleted": false,
+        };
+      });
     }
   }
 
@@ -391,7 +602,57 @@ class _DashboardState extends State<Dashboard> {
     }
 
     if (_errorMessage != null) {
-      return Scaffold(body: Center(child: Text(_errorMessage!)));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              if (_errorMessage!.contains('เข้าสู่ระบบ'))
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
+                  icon: const Icon(Icons.login),
+                  label: const Text('เข้าสู่ระบบ'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                      _errorMessage = null;
+                    });
+                    _fetchUserData();
+                    loadData();
+                    loadDailyTasks();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('ลองใหม่'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (_userData == null) {
@@ -403,8 +664,14 @@ class _DashboardState extends State<Dashboard> {
               const Text("ไม่พบข้อมูลผู้ใช้"),
               const SizedBox(height: 10),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/profile');
+                onPressed: () async {
+                  // นำทางไปหน้า profile และรอผลตอบกลับ
+                  final result = await Navigator.pushNamed(context, '/profile');
+                  
+                  // ถ้ากลับมาแล้ว ให้ refresh ข้อมูล
+                  if (result == true || result == null) {
+                    await refreshAllData();
+                  }
                 },
                 child: const Text("ไปที่หน้าโปรไฟล์"),
               ),
@@ -414,20 +681,33 @@ class _DashboardState extends State<Dashboard> {
       );
     }
 
-    final user = FirebaseAuth.instance.currentUser;
     final String displayName =
         _userData!['username'] ??
-        user?.displayName ??
         _userData!['email'] ??
         'User';
     final int? age = _userData!['age'];
-    final double? weight = _userData!['weight'];
-    final double? height = _userData!['height'];
+    final double? weight = _userData!['weight']?.toDouble();
+    final double? height = _userData!['height']?.toDouble();
     final String bmiResult = _calculateBmi(weight, height);
 
-    final Map<String, dynamic> healthInfo = _userData!['healthInfo'] ?? {};
-    final String bloodPressure = healthInfo['bloodPressure'] ?? 'N/A';
-    final int? heartRate = healthInfo['heartRate'];
+    // ปรับปรุงการเข้าถึงข้อมูลสุขภาพให้เข้ากับโครงสร้างใหม่ - รองรับทั้ง Firebase และ FastAPI structure
+    String bloodPressure = 'N/A';
+    int? heartRate;
+    
+    // ลองดึงข้อมูลจาก FastAPI structure ก่อน
+    if (_userData!['blood_pressure'] != null) {
+      bloodPressure = _userData!['blood_pressure'];
+    }
+    if (_userData!['heart_rate'] != null) {
+      heartRate = _userData!['heart_rate'];
+    }
+    
+    // ถ้าไม่มี ลองดึงจาก Firebase structure (สำหรับข้อมูลเก่า)
+    if (bloodPressure == 'N/A' && _userData!['healthInfo'] != null) {
+      final healthInfo = _userData!['healthInfo'];
+      bloodPressure = healthInfo['bloodPressure'] ?? 'N/A';
+      heartRate = healthInfo['heartRate'];
+    }
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
@@ -446,11 +726,14 @@ class _DashboardState extends State<Dashboard> {
     );
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
+      body: RefreshIndicator(
+        onRefresh: refreshAllData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(), // เพื่อให้ pull-to-refresh ทำงานได้
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
             Container(
               height: isTablet ? 200 : 150,
               width: double.infinity,
@@ -623,15 +906,13 @@ class _DashboardState extends State<Dashboard> {
 
                   const SizedBox(height: 20),
                   _buildTaskInfo(),
-
-                  
-                  
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
+          ], // ปิด children ของ Column
+        ), // ปิด Column (child ของ SingleChildScrollView)
+      ), // ปิด SingleChildScrollView (child ของ RefreshIndicator)
+    ), // ปิด RefreshIndicator (body ของ Scaffold)
+    ); // ปิด Scaffold
   }
 }

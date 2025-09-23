@@ -49,7 +49,8 @@ CREATE TABLE "users" (
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now()),
   "blood_pressure" varchar,
-  "health_problems" text,
+  "heart_rate" integer,
+  "health_problems" text[],
   "saved_days_count" integer DEFAULT 0,
   "day_streak" integer DEFAULT 0,
   "last_updated" timestamp DEFAULT (now())
