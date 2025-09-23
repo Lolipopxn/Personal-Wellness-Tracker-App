@@ -83,6 +83,7 @@ CREATE TABLE "meals" (
   "user_id" varchar NOT NULL,
   "food_name" varchar,
   "meal_type" meal_type,
+  "calories" integer DEFAULT 0,
   "image_url" varchar,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now())
@@ -102,8 +103,8 @@ CREATE TABLE "tasks" (
   "value_number" double precision,
   "completed" boolean DEFAULT false,
   "task_quality" varchar,
-  "started_at" timestamp NOT NULL,
-  "ended_at" timestamp NOT NULL,
+  "started_at" timestamp,
+  "ended_at" timestamp,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now())
 );

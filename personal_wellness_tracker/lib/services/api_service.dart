@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -504,6 +506,200 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to update user preferences: ${response.body}');
+    }
+  }
+
+  // Food Logs methods
+  Future<Map<String, dynamic>?> getFoodLogByDate(String userId, DateTime date) async {
+    final headers = await getHeaders();
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/$userId/food-logs/$dateStr'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      return null; // No food log for this date
+    } else {
+      throw Exception('Failed to get food log: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createFoodLog({
+    required String userId,
+    required DateTime date,
+  }) async {
+    final headers = await getHeaders();
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/users/$userId/food-logs/'),
+      headers: headers,
+      body: jsonEncode({
+        'date': dateStr,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create food log: ${response.body}');
+    }
+  }
+
+  // Meals methods
+  Future<List<Map<String, dynamic>>> getMealsByFoodLog(String foodLogId) async {
+    final headers = await getHeaders();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/food-logs/$foodLogId/meals/'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> mealsData = jsonDecode(response.body);
+      return mealsData.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to get meals: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createMeal({
+    required String foodLogId,
+    required String userId,
+    required String foodName,
+    required String mealType,
+    int? calories,
+    String? imageUrl,
+  }) async {
+    final headers = await getHeaders();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/meals/'),
+      headers: headers,
+      body: jsonEncode({
+        'food_log_id': foodLogId,
+        'user_id': userId,
+        'food_name': foodName,
+        'meal_type': mealType,
+        if (calories != null) 'calories': calories,
+        if (imageUrl != null) 'image_url': imageUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create meal: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMeal({
+    required String mealId,
+    required String foodName,
+    required String mealType,
+    int? calories,
+    String? imageUrl,
+  }) async {
+    final headers = await getHeaders();
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/meals/$mealId'),
+      headers: headers,
+      body: jsonEncode({
+        'food_name': foodName,
+        'meal_type': mealType,
+        if (calories != null) 'calories': calories,
+        if (imageUrl != null) 'image_url': imageUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to update meal: ${response.body}');
+    }
+  }
+
+  Future<void> deleteMeal(String mealId) async {
+    final headers = await getHeaders();
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/meals/$mealId'),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete meal: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadMealImage(String imagePath) async {
+    try {
+      final headers = await getHeaders();
+      headers.remove('Content-Type'); // Remove for multipart
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/meals/upload-image/'),
+      );
+
+      request.headers.addAll(headers);
+      
+      // ตรวจสอบไฟล์ก่อนอัปโหลด
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        throw Exception('File does not exist');
+      }
+      
+      final fileSize = await file.length();
+      print('Uploading file: $imagePath, size: $fileSize bytes');
+      
+      if (fileSize > 5 * 1024 * 1024) { // 5MB
+        throw Exception('File size must be less than 5MB');
+      }
+      
+      // ตรวจสอบและกำหนด content type ที่ถูกต้อง
+      String? contentType;
+      final extension = imagePath.toLowerCase().split('.').last;
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        default:
+          throw Exception('Only JPEG, PNG, JPG, and WebP images are allowed');
+      }
+      
+      request.files.add(await http.MultipartFile.fromPath(
+        'file', 
+        imagePath,
+        contentType: MediaType.parse(contentType),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('Upload response status: ${response.statusCode}');
+      print('Upload response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to upload image: ${response.body}');
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+      rethrow;
     }
   }
 }

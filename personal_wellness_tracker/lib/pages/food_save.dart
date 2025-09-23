@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import '../services/nutrition_service.dart';
-import '../app/firestore_service.dart';
+import '../services/api_service.dart';
 import '../widgets/nutrition_chart.dart';
 import 'mock_api_manager_page.dart';
 
@@ -15,15 +15,15 @@ class FoodSavePage extends StatefulWidget {
 }
 
 class _FoodSavePageState extends State<FoodSavePage> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final ApiService _apiService = ApiService();
 
   List<Map<String, dynamic>> _mealsForSelectedDate = [];
   bool _isLoading = true;
   DateTime selectedDate = DateTime.now();
+  String? _currentFoodLogId;
 
   List<Map<String, dynamic>> get meals => _mealsForSelectedDate;
   int get totalCal => meals.fold(0, (sum, m) => sum + ((m['cal'] ?? 0) as int));
-  String _dateKey(DateTime date) => '${date.year}-${date.month}-${date.day}';
 
   @override
   void initState() {
@@ -36,8 +36,27 @@ class _FoodSavePageState extends State<FoodSavePage> {
       _isLoading = true;
     });
     try {
-      final key = _dateKey(selectedDate);
-      final fetchedMeals = await _firestoreService.getFoodLogsForDate(key);
+      final currentUser = await _apiService.getCurrentUser();
+      final userId = currentUser['uid'] ?? currentUser['id'];
+      
+      // ดึง food log สำหรับวันที่เลือก
+      final foodLog = await _apiService.getFoodLogByDate(userId, selectedDate);
+      
+      List<Map<String, dynamic>> fetchedMeals = [];
+      if (foodLog != null) {
+        _currentFoodLogId = foodLog['id'];
+        // ดึง meals จาก food log
+        final meals = await _apiService.getMealsByFoodLog(foodLog['id']);
+        fetchedMeals = meals.map<Map<String, dynamic>>((meal) => {
+          'id': meal['id'],
+          'name': meal['food_name'],
+          'type': _convertMealType(meal['meal_type']),
+          'cal': meal['calories'] ?? 0,  // ใช้แคลอรี่จริงจากฐานข้อมูล
+          'desc': meal['food_name'] ?? '',
+          'image_url': meal['image_url'],
+        }).toList();
+      }
+      
       if (mounted) {
         setState(() {
           _mealsForSelectedDate = fetchedMeals;
@@ -55,6 +74,36 @@ class _FoodSavePageState extends State<FoodSavePage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  String _convertMealType(String? apiMealType) {
+    switch (apiMealType) {
+      case 'breakfast':
+        return 'มื้อเช้า';
+      case 'lunch':
+        return 'กลางวัน';
+      case 'dinner':
+        return 'เย็น';
+      case 'snack':
+        return 'ของว่าง';
+      default:
+        return 'ของว่าง';
+    }
+  }
+
+  String _convertMealTypeToApi(String thaiMealType) {
+    switch (thaiMealType) {
+      case 'มื้อเช้า':
+        return 'breakfast';
+      case 'กลางวัน':
+        return 'lunch';
+      case 'เย็น':
+        return 'dinner';
+      case 'ของว่าง':
+        return 'snack';
+      default:
+        return 'snack';
     }
   }
 
@@ -80,10 +129,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
     if (confirm ?? false) {
       try {
-        await _firestoreService.deleteFoodLog(
-          date: _dateKey(selectedDate),
-          mealId: mealId,
-        );
+        await _apiService.deleteMeal(mealId);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ลบรายการอาหารสำเร็จ'),
@@ -191,21 +237,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                               });
                             }
                           },
-                          child: pickedImage == null
-                              ? Container(
-                                  width: 260,
-                                  height: 180,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add_a_photo,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
-                                )
-                              : ClipRRect(
+                          child: pickedImage != null
+                              ? ClipRRect(
                                   borderRadius: BorderRadius.circular(18),
                                   child: Image.file(
                                     pickedImage!,
@@ -213,7 +246,45 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                     height: 180,
                                     fit: BoxFit.cover,
                                   ),
-                                ),
+                                )
+                              : meal?['image_url'] != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(18),
+                                      child: Image.network(
+                                        'http://10.0.2.2:8000${meal!['image_url']}',
+                                        width: 260,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            width: 260,
+                                            height: 180,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[200],
+                                              borderRadius: BorderRadius.circular(18),
+                                            ),
+                                            child: const Icon(
+                                              Icons.add_a_photo,
+                                              size: 48,
+                                              color: Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 260,
+                                      height: 180,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      child: const Icon(
+                                        Icons.add_a_photo,
+                                        size: 48,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -391,34 +462,55 @@ class _FoodSavePageState extends State<FoodSavePage> {
                             child: ElevatedButton(
                               onPressed: () async {
                                 if (formKey.currentState?.validate() ?? false) {
-                                  int caloriesValue =
-                                      int.tryParse(calController.text.trim()) ??
-                                      (meal?['cal'] as int? ?? 0);
-                                  if (nutritionData != null) {
-                                    caloriesValue = nutritionData!.calories
-                                        .toInt();
-                                  }
-
-                                  final mealData = {
-                                    'type': type,
-                                    'name': nameController.text.trim(),
-                                    'cal': caloriesValue,
-                                    'desc': descController.text.trim(),
-                                  };
-
                                   try {
+                                    final currentUser = await _apiService.getCurrentUser();
+                                    final userId = currentUser['uid'] ?? currentUser['id'];
+                                    
+                                    // อัปโหลดรูปภาพถ้ามี
+                                    String? imageUrl;
+                                    if (pickedImage != null) {
+                                      final uploadResponse = await _apiService.uploadMealImage(pickedImage!.path);
+                                      imageUrl = uploadResponse['image_url'];
+                                    }
+
+                                    // คำนวณแคลอรี่จาก nutrition data หรือจากที่ผู้ใช้ป้อน
+                                    int calories = 0;
+                                    if (nutritionData != null) {
+                                      calories = nutritionData!.calories.toInt();
+                                    } else if (calController.text.isNotEmpty) {
+                                      calories = int.tryParse(calController.text) ?? 0;
+                                    }
+
                                     if (meal?['id'] != null) {
-                                      await _firestoreService.updateFoodLog(
-                                        date: _dateKey(selectedDate),
+                                      // อัปเดต meal ที่มีอยู่
+                                      await _apiService.updateMeal(
                                         mealId: meal!['id'],
-                                        mealData: mealData,
+                                        foodName: nameController.text.trim(),
+                                        mealType: _convertMealTypeToApi(type!),
+                                        calories: calories,
+                                        imageUrl: imageUrl,
                                       );
                                     } else {
-                                      await _firestoreService.addFoodLog(
-                                        date: _dateKey(selectedDate),
-                                        mealData: mealData,
+                                      // สร้าง food log ใหม่ถ้ายังไม่มี
+                                      if (_currentFoodLogId == null) {
+                                        final foodLog = await _apiService.createFoodLog(
+                                          userId: userId,
+                                          date: selectedDate,
+                                        );
+                                        _currentFoodLogId = foodLog['id'];
+                                      }
+                                      
+                                      // สร้าง meal ใหม่
+                                      await _apiService.createMeal(
+                                        foodLogId: _currentFoodLogId!,
+                                        userId: userId,
+                                        foodName: nameController.text.trim(),
+                                        mealType: _convertMealTypeToApi(type!),
+                                        calories: calories,
+                                        imageUrl: imageUrl,
                                       );
                                     }
+                                    
                                     if (context.mounted)
                                       Navigator.of(context).pop();
                                     _loadFoodLogs();
@@ -819,11 +911,25 @@ class _MealCardState extends State<MealCard> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Icon(
-                        Icons.restaurant,
-                        size: 40,
-                        color: Colors.grey[400],
-                      ),
+                      child: widget.meal['image_url'] != null
+                          ? Image.network(
+                              'http://10.0.2.2:8000${widget.meal['image_url']}',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  Icons.restaurant,
+                                  size: 40,
+                                  color: Colors.grey[400],
+                                );
+                              },
+                            )
+                          : Icon(
+                              Icons.restaurant,
+                              size: 40,
+                              color: Colors.grey[400],
+                            ),
                     ),
                   ),
                   const SizedBox(width: 16),

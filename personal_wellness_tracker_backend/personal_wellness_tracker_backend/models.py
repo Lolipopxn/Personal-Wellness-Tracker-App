@@ -103,6 +103,7 @@ class Meal(Base):
     user_id = Column(String, ForeignKey("users.uid"), nullable=False)
     food_name = Column(String)
     meal_type = Column(Enum(MealTypeEnum))
+    calories = Column(Integer, default=0)  # เพิ่มฟิลด์แคลอรี่
     image_url = Column(String)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -132,8 +133,8 @@ class Task(Base):
     value_number = Column(Float)
     completed = Column(Boolean, default=False)
     task_quality = Column(String)
-    started_at = Column(DateTime, nullable=False)
-    ended_at = Column(DateTime, nullable=False)
+    started_at = Column(DateTime)
+    ended_at = Column(DateTime)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     

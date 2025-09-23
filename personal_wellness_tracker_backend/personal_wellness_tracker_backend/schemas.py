@@ -102,6 +102,7 @@ class FoodLog(FoodLogBase):
 class MealBase(BaseModel):
     food_name: Optional[str] = None
     meal_type: Optional[MealTypeEnum] = None
+    calories: Optional[int] = 0  # เพิ่มฟิลด์แคลอรี่
     image_url: Optional[str] = None
 
 class MealCreate(MealBase):
@@ -158,8 +159,8 @@ class TaskBase(BaseModel):
     value_number: Optional[float] = None
     completed: bool = False
     task_quality: Optional[str] = None
-    started_at: datetime
-    ended_at: datetime
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
 
 class TaskCreate(TaskBase):
     daily_task_id: str
