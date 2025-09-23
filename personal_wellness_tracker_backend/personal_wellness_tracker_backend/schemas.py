@@ -67,6 +67,10 @@ class UserGoalBase(BaseModel):
     effective_date: Optional[date] = None
     end_date: Optional[date] = None
 
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
 class UserGoalCreate(UserGoalBase):
     user_id: str
 

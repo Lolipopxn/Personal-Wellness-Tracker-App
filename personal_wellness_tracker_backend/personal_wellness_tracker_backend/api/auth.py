@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from fastapi import Body
 from typing import Annotated
 import uuid
 
@@ -209,4 +210,38 @@ def update_profile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update profile: {e}"
+        )
+
+@router.put("/change-password", response_model=schemas.StandardResponse)   
+def change_password(
+    passwords: schemas.ChangePassword, 
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(deps.get_current_active_user)]
+):
+    """
+    Change the password of the currently logged-in user
+    """
+    if not security.verify_password(passwords.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    new_hashed = security.get_password_hash(passwords.new_password)
+    current_user.password_hash = new_hashed
+
+    try:
+        db.commit()
+        db.refresh(current_user)
+
+        return schemas.StandardResponse(
+            success=True,
+            message="Password changed successfully",
+            data={"user_id": current_user.uid}
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to change password: {e}"
         )

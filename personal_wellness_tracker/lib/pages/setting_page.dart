@@ -75,6 +75,107 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => notificationsEnabled = savedValue);
   }
 
+  void _changePasswordDialog() {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+
+    String? currentPasswordError;
+    String? newPasswordError;
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("เปลี่ยนรหัสผ่าน"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: currentPasswordController,
+                    decoration: InputDecoration(
+                      labelText: "รหัสผ่านปัจจุบัน",
+                      errorText: currentPasswordError,
+                    ),
+                    obscureText: true,
+                  ),
+                  TextField(
+                    controller: newPasswordController,
+                    decoration: InputDecoration(
+                      labelText: "รหัสผ่านใหม่",
+                      errorText: newPasswordError,
+                    ),
+                    obscureText: true,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("ยกเลิก"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    setState(() {
+                      currentPasswordError = null;
+                      newPasswordError = null;
+                    });
+
+                    final currentPassword = currentPasswordController.text;
+                    final newPassword = newPasswordController.text;
+
+                    if (currentPassword.isEmpty || newPassword.isEmpty) {
+                      setState(() {
+                        if (currentPassword.isEmpty) {
+                          currentPasswordError = "กรุณากรอกรหัสผ่านปัจจุบัน";
+                        }
+                        if (newPassword.isEmpty) {
+                          newPasswordError = "กรุณากรอกรหัสผ่านใหม่";
+                        }
+                      });
+                      return;
+                    }
+
+                    if (newPassword.length < 6) {
+                      setState(() {
+                        newPasswordError =
+                            "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร";
+                      });
+                      return;
+                    }
+
+                    Navigator.pop(context); // ปิด dialog
+
+                    try {
+                      final success = await AuthService().changePassword(
+                        currentPassword: currentPassword,
+                        newPassword: newPassword,
+                      );
+
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("เปลี่ยนรหัสผ่านล้มเหลว: $e")),
+                      );
+                    }
+                  },
+                  child: const Text("บันทึก"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -174,6 +275,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   await prefs.setBool('notificationsEnabled', val);
                   await initNotificationService();
                 },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text("เปลี่ยนรหัสผ่าน"),
+                onTap: _changePasswordDialog,
               ),
               const Divider(),
               ListTile(
