@@ -29,14 +29,14 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _start() async {
     // รอแอนิเมชัน/สปแลช
-    await Future.delayed(const Duration(milliseconds: 3000));
+    await Future.delayed(const Duration(milliseconds: 4000));
 
     // เช็คว่าผ่าน Onboarding แล้วหรือยัง
     final sp = await SharedPreferences.getInstance();
     final seen = sp.getBool('onboarding_done') ?? false;
 
     if (!mounted) return;
-    if (seen) {
+    if (!seen) {
       Navigator.of(context).pushReplacementNamed('/login');
     } else {
       Navigator.of(context).pushReplacementNamed('/onboarding');
