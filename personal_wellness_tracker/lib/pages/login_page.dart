@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:personal_wellness_tracker/์NavigationBar/main_scaffold.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
+import 'profile.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,10 +45,8 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success']) {
         if (context.mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const MainScaffold()),
-            (route) => false,
-          );
+          // เช็คสถานะการกรอกข้อมูลโปรไฟล์
+          await _checkProfileCompletion();
         }
       } else {
         setState(() {
@@ -58,6 +58,43 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = false;
         errorMessage = 'An error occurred: $e';
       });
+    }
+  }
+
+  Future<void> _checkProfileCompletion() async {
+    try {
+      final apiService = ApiService();
+      final userData = await apiService.getCurrentUser();
+      
+      print("DEBUG: User data from login: $userData"); // Debug line
+      
+      // เช็คว่า profile_completed เป็น true หรือไม่
+      bool isProfileComplete = userData['profile_completed'] ?? false;
+      
+      if (context.mounted) {
+        if (isProfileComplete) {
+          // โปรไฟล์ครบถ้วนแล้ว ไปหน้าหลัก
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
+            (route) => false,
+          );
+        } else {
+          // โปรไฟล์ยังไม่ครบถ้วน ไปหน้ากรอกข้อมูล
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const Profile(isFromLogin: true)),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      print("Error checking profile completion: $e");
+      // ถ้าเกิดข้อผิดพลาด ให้ไปหน้าหลักตามปกติ
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScaffold()),
+          (route) => false,
+        );
+      }
     }
   }
 

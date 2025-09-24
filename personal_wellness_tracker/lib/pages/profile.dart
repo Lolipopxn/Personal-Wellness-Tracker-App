@@ -2,18 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../์NavigationBar/main_scaffold.dart';
 
 class Profile extends StatelessWidget {
-  const Profile({super.key});
+  final bool isFromLogin;
+  
+  const Profile({super.key, this.isFromLogin = false});
 
   @override
   Widget build(BuildContext context) {
-    return const RegistrationScreen();
+    return RegistrationScreen(isFromLogin: isFromLogin);
   }
 }
 
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({super.key});
+  final bool isFromLogin;
+  
+  const RegistrationScreen({super.key, this.isFromLogin = false});
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -296,31 +301,109 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.check_circle, color: Colors.green, size: 60),
-              SizedBox(height: 18),
-              Text(
-                'อัปเดตข้อมูลสำเร็จ',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ],
+          backgroundColor: Colors.white,
+          elevation: 8,
+          content: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Success animation container
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF79D7BE).withOpacity(0.1),
+                    border: Border.all(
+                      color: Color(0xFF79D7BE),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF79D7BE),
+                    size: 50,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Title text
+                Text(
+                  widget.isFromLogin ? 'ตั้งค่าข้อมูลเสร็จสิ้น!' : 'อัปเดตข้อมูลสำเร็จ!',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E5077),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                
+                // Subtitle text
+                Text(
+                  widget.isFromLogin 
+                    ? 'ยินดีต้อนรับสู่แอปติดตามสุขภาพ\nเริ่มต้นการใช้งานได้เลย!'
+                    : 'ข้อมูลของคุณได้รับการอัปเดต\nเรียบร้อยแล้ว',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
           actions: [
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10, left: 20, right: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF79D7BE),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                    shadowColor: Color(0xFF79D7BE).withOpacity(0.3),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // ปิด dialog สำเร็จ
+                    
+                    // ถ้ามาจากการ login ให้ไปหน้าหลัก ถ้าไม่ใช่ให้กลับไปหน้าเดิม
+                    if (widget.isFromLogin) {
+                      // นำทางไปหน้าหลักของแอป เมื่อกรอกข้อมูลครบถ้วนแล้ว
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const MainScaffold()),
+                        (route) => false,
+                      );
+                    } else {
+                      // กลับไปหน้าก่อนหน้าพร้อมส่งค่า true เพื่อ refresh
+                      Navigator.of(context).pop(true);
+                    }
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.isFromLogin ? 'เริ่มใช้งาน' : 'ตกลง',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                onPressed: () {
-                  Navigator.of(context).pop(); // ปิด dialog สำเร็จ
-                  Navigator.of(context).pop(true); // กลับไปหน้าก่อนหน้าพร้อมส่งค่า true เพื่อ refresh
-                },
-                child: const Text('ตกลง'),
               ),
             ),
           ],
@@ -338,16 +421,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('แก้ไขข้อมูลส่วนตัว'),
+        title: Text(widget.isFromLogin ? 'ตั้งค่าข้อมูลส่วนตัว' : 'แก้ไขข้อมูลส่วนตัว'),
         backgroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 60,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop(true); // ส่งค่า true เพื่อ refresh dashboard
-          },
-        ),
+        leading: widget.isFromLogin 
+          ? null // ซ่อนปุ่มกลับถ้ามาจากการ login
+          : IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.of(context).pop(true); // ส่งค่า true เพื่อ refresh dashboard
+              },
+            ),
       ),
       body: SafeArea(
         child: Column(
@@ -452,8 +537,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _currentStepIndex < _totalSteps - 1
-                                ? Colors.green
-                                : Colors.blue,
+                                ? Color(0xFF79D7BE)
+                                : Color(0xFF4DA1A9),
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -494,15 +579,30 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               child: Column(
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isActiveStep ? Colors.green : Colors.white,
+                      gradient: isActiveStep 
+                        ? LinearGradient(
+                            colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                      color: isActiveStep ? null : Colors.white,
                       border: Border.all(
-                        color: isActiveStep ? Colors.green : Colors.grey[400]!,
+                        color: isActiveStep ? Color(0xFF2E7D32) : Colors.grey[400]!,
                         width: 2,
                       ),
+                      boxShadow: isActiveStep ? [
+                        BoxShadow(
+                          color: Color(0xFF4CAF50).withOpacity(0.3),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
                     ),
                     child: Center(
                       child: Text(
@@ -519,8 +619,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   Text(
                     _getStepLabel(step),
                     style: TextStyle(
-                      color: isActiveStep ? Colors.green : Colors.black54,
-                      fontSize: 10,
+                      color: isActiveStep ? Color(0xFF2E7D32) : Colors.black54,
+                      fontSize: 11,
                       fontWeight: isActiveStep
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -538,11 +638,26 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             return Expanded(
               flex: 1,
               child: Container(
-                height: 2,
+                height: 3,
                 margin: const EdgeInsets.only(bottom: 12, left: 4, right: 4),
                 decoration: BoxDecoration(
-                  color: isLineActive ? Colors.green : Colors.grey[300],
-                  borderRadius: BorderRadius.circular(1),
+                  gradient: isLineActive 
+                    ? LinearGradient(
+                        colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      )
+                    : null,
+                  color: isLineActive ? null : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                  boxShadow: isLineActive ? [
+                    BoxShadow(
+                      color: Color(0xFF4CAF50).withOpacity(0.2),
+                      spreadRadius: 0,
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ] : null,
                 ),
               ),
             );
@@ -580,13 +695,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: Color(0xFF2E5077),
                 ),
               ),
               const SizedBox(height: 20),
               
               Card(
                 elevation: 2,
+                color: Color(0xFFF6F4F0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -692,12 +808,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: Color(0xFF2E5077),
                 ),
               ),
               const SizedBox(height: 18),
               Card(
                 elevation: 2,
+                color: Color(0xFFF6F4F0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -712,7 +829,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.monitor_weight, color: Colors.green),
+                          const Icon(Icons.monitor_weight, color: Color(0xFF2E5077)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _buildTextField(
@@ -734,7 +851,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       const SizedBox(height: 18),
                       Row(
                         children: [
-                          const Icon(Icons.fitness_center, color: Colors.green),
+                          const Icon(Icons.fitness_center, color: Color(0xFF2E5077)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _buildTextField(
@@ -756,7 +873,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       const SizedBox(height: 18),
                       Row(
                         children: [
-                          const Icon(Icons.timer, color: Colors.green),
+                          const Icon(Icons.timer, color: Color(0xFF2E5077)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: GestureDetector(
@@ -804,7 +921,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       const SizedBox(height: 18),
                       Row(
                         children: [
-                          const Icon(Icons.local_drink, color: Colors.green),
+                          const Icon(Icons.local_drink, color: Color(0xFF2E5077)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: GestureDetector(
@@ -858,12 +975,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: Color(0xFF2E5077),
                 ),
               ),
               const SizedBox(height: 18),
               Card(
                 elevation: 2,
+                color: Color(0xFFF6F4F0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -878,7 +996,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.bloodtype, color: Colors.green),
+                          const Icon(Icons.bloodtype, color: Color(0xFF2E5077)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _buildTextField(
@@ -907,7 +1025,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       const SizedBox(height: 18),
                       Row(
                         children: [
-                          const Icon(Icons.favorite, color: Colors.green),
+                          const Icon(Icons.favorite, color: Color(0xFF2E5077)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _buildTextField(
@@ -957,7 +1075,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: Color(0xFF2E5077),
                 ),
               ),
               const SizedBox(height: 20),
@@ -971,23 +1089,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   margin: const EdgeInsets.only(bottom: 20),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: Color(0xFF79D7BE).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!),
+                    border: Border.all(color: Color(0xFF79D7BE).withOpacity(0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.green[700], size: 20),
+                          Icon(Icons.info_outline, color: Color(0xFF2E5077), size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'ข้อมูลพื้นฐาน',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.green[700],
+                              fontSize: 18,
+                              color: Color(0xFF2E5077),
                             ),
                           ),
                         ],
@@ -998,11 +1116,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             children: [
-                              Icon(Icons.cake, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.cake, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('อายุ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('อายุ: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_ageController.text} ปี', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1013,12 +1139,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             children: [
                               Icon(_selectedGender == 'male' ? Icons.male : 
                                    _selectedGender == 'female' ? Icons.female : Icons.transgender, 
-                                   size: 16, color: Colors.grey[600]),
+                                   size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('เพศ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('เพศ: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text(_selectedGender == 'male' ? 'ชาย' : 
                                    _selectedGender == 'female' ? 'หญิง' : 'อื่นๆ', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1027,11 +1161,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             children: [
-                              Icon(Icons.monitor_weight, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.monitor_weight, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('น้ำหนัก: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('น้ำหนัก: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_weightController.text} กก.', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1040,11 +1182,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             children: [
-                              Icon(Icons.height, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.height, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('ส่วนสูง: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('ส่วนสูง: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_heightController.text} ซม.', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1061,23 +1211,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   margin: const EdgeInsets.only(bottom: 20),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: Color(0xFF79D7BE).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(color: Color(0xFF79D7BE).withOpacity(0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.flag_outlined, color: Colors.blue[700], size: 20),
+                          Icon(Icons.flag_outlined, color: Color(0xFF2E5077), size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'เป้าหมายที่ตั้งไว้',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.blue[700],
+                              fontSize: 18,
+                              color: Color(0xFF2E5077),
                             ),
                           ),
                         ],
@@ -1088,11 +1238,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
-                              Icon(Icons.monitor_weight, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.monitor_weight, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('น้ำหนักเป้าหมาย: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('น้ำหนักเป้าหมาย: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_goalWeightController.text} กก.', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1101,11 +1259,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
-                              Icon(Icons.fitness_center, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.fitness_center, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('ออกกำลังกาย: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('ออกกำลังกาย: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_goalExerciseController.text} ครั้ง/สัปดาห์', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1114,11 +1280,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
-                              Icon(Icons.timer, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.timer, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('ระยะเวลา: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('ระยะเวลา: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_goalExerciseMinutesController.text} นาที/วัน', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1127,11 +1301,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 0),
                           child: Row(
                             children: [
-                              Icon(Icons.local_drink, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.local_drink, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('ดื่มน้ำ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('ดื่มน้ำ: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_goalWaterController.text} แก้ว/วัน', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1148,23 +1330,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   margin: const EdgeInsets.only(bottom: 20),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.orange[50],
+                    color: Color(0xFF79D7BE).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange[200]!),
+                    border: Border.all(color: Color(0xFF79D7BE).withOpacity(0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.health_and_safety, color: Colors.orange[700], size: 20),
+                          Icon(Icons.health_and_safety, color: Color(0xFF2E5077), size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'ข้อมูลสุขภาพที่บันทึกไว้',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.orange[700],
+                              fontSize: 18,
+                              color: Color(0xFF2E5077),
                             ),
                           ),
                         ],
@@ -1175,11 +1357,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
-                              Icon(Icons.bloodtype, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.bloodtype, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('ความดันโลหิต: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('ความดันโลหิต: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_bpController.text} mmHg', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1188,11 +1378,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
-                              Icon(Icons.favorite, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.favorite, size: 16, color: Color(0xFF4DA1A9)),
                               const SizedBox(width: 8),
-                              Text('อัตราการเต้นหัวใจ: ', style: TextStyle(color: Colors.grey[600])),
+                              Text('อัตราการเต้นหัวใจ: ', style: TextStyle(
+                                color: Color(0xFF2E5077),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              )),
                               Text('${_hrController.text} ครั้ง/นาที', 
-                                   style: const TextStyle(fontWeight: FontWeight.w600)),
+                                   style: const TextStyle(
+                                     fontWeight: FontWeight.w700,
+                                     fontSize: 15,
+                                     color: Color(0xFF2E5077),
+                                   )),
                             ],
                           ),
                         ),
@@ -1204,9 +1402,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.local_hospital, size: 16, color: Colors.grey[600]),
+                                  Icon(Icons.local_hospital, size: 16, color: Color(0xFF4DA1A9)),
                                   const SizedBox(width: 8),
-                                  Text('ปัญหาสุขภาพ: ', style: TextStyle(color: Colors.grey[600])),
+                                  Text('ปัญหาสุขภาพ: ', style: TextStyle(
+                                    color: Color(0xFF2E5077),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  )),
                                 ],
                               ),
                               const SizedBox(height: 4),
@@ -1215,17 +1417,47 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 runSpacing: 4,
                                 children: [
                                   if (_healthProblemsChecked![0]) 
-                                    Chip(label: Text('โรคเบาหวาน'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    Chip(
+                                      label: Text('โรคเบาหวาน', 
+                                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                      backgroundColor: Color(0xFF4DA1A9),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                   if (_healthProblemsChecked![1]) 
-                                    Chip(label: Text('โรคความดันโลหิตสูง'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    Chip(
+                                      label: Text('โรคความดันโลหิตสูง', 
+                                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                      backgroundColor: Color(0xFF4DA1A9),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                   if (_healthProblemsChecked![2]) 
-                                    Chip(label: Text('โรคหัวใจ'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    Chip(
+                                      label: Text('โรคหัวใจ', 
+                                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                      backgroundColor: Color(0xFF4DA1A9),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                   if (_healthProblemsChecked![3]) 
-                                    Chip(label: Text('โรคไขมันในเลือดสูง'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    Chip(
+                                      label: Text('โรคไขมันในเลือดสูง', 
+                                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                      backgroundColor: Color(0xFF4DA1A9),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                   if (_healthProblemsChecked![4]) 
-                                    Chip(label: Text('โรคภูมิแพ้'), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    Chip(
+                                      label: Text('โรคภูมิแพ้', 
+                                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                      backgroundColor: Color(0xFF4DA1A9),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                   if (_otherChecked && _otherProblemController!.text.isNotEmpty)
-                                    Chip(label: Text(_otherProblemController!.text), materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    Chip(
+                                      label: Text(_otherProblemController!.text, 
+                                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                                      backgroundColor: Color(0xFF4DA1A9),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                 ],
                               ),
                             ],
@@ -1237,33 +1469,94 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               
               // ข้อความยืนยันการกรอกข้อมูล
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.purple[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.purple[200]!),
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF79D7BE).withOpacity(0.1),
+                      Color(0xFF4DA1A9).withOpacity(0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Color(0xFF79D7BE).withOpacity(0.4),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF79D7BE).withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.check_circle_outline, 
-                         color: Colors.purple[700], size: 40),
-                    const SizedBox(height: 12),
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF79D7BE).withOpacity(0.2),
+                        border: Border.all(
+                          color: Color(0xFF79D7BE),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.fact_check_rounded, 
+                        color: Color(0xFF2E5077), 
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       'ยืนยันข้อมูลที่กรอก',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.purple[700],
+                        fontSize: 20,
+                        color: Color(0xFF2E5077),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
-                      'กรุณาตรวจสอบข้อมูลทั้งหมดด้านบนให้ถูกต้อง หากต้องการแก้ไขสามารถกลับไปแก้ไขได้',
+                      'กรุณาตรวจสอบข้อมูลทั้งหมดด้านบนให้ถูกต้อง\nหากต้องการแก้ไขสามารถกลับไปแก้ไขได้',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                        fontSize: 15,
+                        color: Color(0xFF2E5077).withOpacity(0.8),
+                        height: 1.4,
                       ),
                       textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF79D7BE).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF2E5077),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'ข้อมูลจะถูกบันทึกอย่างปลอดภัย',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF2E5077),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1365,7 +1658,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.green, width: 2),
+          borderSide: BorderSide(color: Color(0xFF79D7BE), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1380,7 +1673,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           borderSide: BorderSide(color: Colors.grey[200]!),
         ),
         filled: true,
-        fillColor: enabled ? Colors.white : Colors.grey[50],
+        fillColor: enabled ? Color(0xFFF6F4F0) : Colors.grey[50],
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
           horizontal: 16,
@@ -1388,7 +1681,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         suffixIcon: controller.text.isNotEmpty
             ? Icon(
                 Icons.check_circle,
-                color: Colors.green,
+                color: Color(0xFF79D7BE),
                 size: 20,
               )
             : null,
@@ -1410,16 +1703,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.green[100] : Colors.white,
+          color: isSelected ? Color(0xFF79D7BE).withOpacity(0.2) : Colors.white,
           border: Border.all(
-            color: isSelected ? Colors.green : Colors.grey[300]!,
+            color: isSelected ? Color(0xFF79D7BE) : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(10),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.08),
+                    color: Color(0xFF79D7BE).withOpacity(0.08),
                     blurRadius: 4,
                     spreadRadius: 1,
                   ),
@@ -1431,7 +1724,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.green : Colors.grey[600],
+              color: isSelected ? Color(0xFF2E5077) : Colors.grey[600],
               size: 32,
             ),
             const SizedBox(height: 4),
@@ -1442,7 +1735,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ? 'หญิง'
                   : 'อื่นๆ',
               style: TextStyle(
-                color: isSelected ? Colors.green[900] : Colors.grey[700],
+                color: isSelected ? Color(0xFF2E5077) : Colors.grey[700],
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 15,
               ),
@@ -1476,8 +1769,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             return FilterChip(
               label: Text(problems[index]),
               selected: _healthProblemsChecked![index],
-              selectedColor: Colors.green[200],
-              checkmarkColor: Colors.green[900],
+              selectedColor: Color(0xFF79D7BE).withOpacity(0.3),
+              checkmarkColor: Color(0xFF2E5077),
               onSelected: (val) {
                 setState(() {
                   _healthProblemsChecked![index] = val;
@@ -1562,7 +1855,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   return ListTile(
                     title: Text('$minutes นาที'),
                     trailing: selectedMinutes == minutes 
-                        ? const Icon(Icons.check, color: Colors.green) 
+                        ? const Icon(Icons.check, color: Color(0xFF2E5077)) 
                         : null,
                     onTap: () {
                       selectedMinutes = minutes;
@@ -1616,11 +1909,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 itemBuilder: (context, index) {
                   final cups = index + 1;
                   return ListTile(
-                    leading: Icon(Icons.local_drink, color: Colors.blue[300]),
+                    leading: Icon(Icons.local_drink, color: Color(0xFF4DA1A9)),
                     title: Text('$cups แก้ว'),
                     subtitle: Text('≈ ${(cups * 250).toStringAsFixed(0)} มล.'),
                     trailing: selectedCups == cups 
-                        ? const Icon(Icons.check, color: Colors.green) 
+                        ? const Icon(Icons.check, color: Color(0xFF2E5077)) 
                         : null,
                     onTap: () {
                       selectedCups = cups;
