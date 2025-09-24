@@ -50,17 +50,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
     final result = await AuthService.updateProfile(username: newUsername);
 
-    if (mounted) Navigator.pop(context); // close loading
+    if (mounted) Navigator.pop(context);
 
     if (result['success']) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("อัปเดตชื่อผู้ใช้สำเร็จ")));
+      _showResultPopup("อัปเดตชื่อผู้ใช้สำเร็จ", true);
       _loadAllUserData();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? "อัปเดตไม่สำเร็จ")),
-      );
+      _showResultPopup(result['message'] ?? "อัปเดตไม่สำเร็จ", false);
     }
   }
 
@@ -73,6 +69,32 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     final savedValue = prefs.getBool('notificationsEnabled') ?? true;
     setState(() => notificationsEnabled = savedValue);
+  }
+
+  void _showResultPopup(String message, bool success) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle : Icons.error,
+              color: success ? Colors.green : Colors.red,
+            ),
+            const SizedBox(width: 8),
+            Text(success ? "สำเร็จ" : "ล้มเหลว"),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            child: const Text("ตกลง"),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
   }
 
   void _changePasswordDialog() {
@@ -145,7 +167,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       return;
                     }
 
-                    Navigator.pop(context); // ปิด dialog
+                    Navigator.pop(context);
 
                     try {
                       final success = await AuthService().changePassword(
@@ -154,16 +176,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       );
 
                       if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("เปลี่ยนรหัสผ่านสำเร็จ"),
-                          ),
-                        );
+                        _showResultPopup("เปลี่ยนรหัสผ่านสำเร็จ", true);
+                      } else {
+                        _showResultPopup("รหัสผ่านปัจจุบันไม่ถูกต้อง", false);
                       }
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("เปลี่ยนรหัสผ่านล้มเหลว: $e")),
-                      );
+                      _showResultPopup("เปลี่ยนรหัสผ่านล้มเหลว: $e", false);
                     }
                   },
                   child: const Text("บันทึก"),
@@ -242,7 +260,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               final newUsername = usernameController.text
                                   .trim();
                               if (newUsername.isNotEmpty) {
-                                Navigator.pop(context); // close dialog
+                                Navigator.pop(context);
                                 _updateUsername(newUsername);
                               }
                             },
@@ -274,6 +292,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('notificationsEnabled', val);
                   await initNotificationService();
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.health_and_safety),
+                title: const Text("ตั้งค่าสุขภาพ"),
+                onTap: () async {
+                  await Navigator.pushNamed(context, '/profile');
                 },
               ),
               const Divider(),
