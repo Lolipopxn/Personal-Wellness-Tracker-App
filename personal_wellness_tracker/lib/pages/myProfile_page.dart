@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/achievement_service.dart';
+import '../models/achievement.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -10,6 +12,7 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   Map<String, dynamic>? _userData;
+  List<Achievement> _achievements = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -17,6 +20,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadAchievements();
   }
 
   Future<void> _loadUserData() async {
@@ -32,49 +36,34 @@ class _UserProfilePageState extends State<UserProfilePage> {
     if (result['success']) {
       setState(() {
         _userData = result['user'];
-        _isLoading = false;
       });
     } else {
       setState(() {
         _errorMessage = result['message'] ?? 'Failed to load user data';
-        _isLoading = false;
       });
     }
   }
 
-  // Dummy data for user achievements
-  final List<Map<String, dynamic>> achievements = const [
-    {
-      'title': 'ผู้ริเริ่ม',
-      'description': 'สำเร็จบันทึกครั้งเเรก',
-      'isAchieved': true,
-    },
-    {
-      'title': 'นักวางแผน',
-      'description': 'บันทึกอาหารครบ 10 วัน',
-      'isAchieved': false,
-    },
-    {
-      'title': 'นักพัฒนา',
-      'description': 'บันทึกกิจกรรมครบ 20 วัน',
-      'isAchieved': false,
-    },
-    {
-      'title': 'ผู้เชี่ยวชาญ',
-      'description': 'บรรลุเป้าหมายสุขภาพ 3 เป้าหมาย',
-      'isAchieved': false,
-    },
-    {
-      'title': 'นักวางแผนมื้ออาหาร',
-      'description': 'วางแผนมื้ออาหารครบ 5 มื้อ',
-      'isAchieved': false,
-    },
-    {
-      'title': 'นักออกกำลังกาย',
-      'description': 'บันทึกการออกกำลังกายครบ 10 วัน',
-      'isAchieved': false,
-    },
-  ];
+  Future<void> _loadAchievements() async {
+    // Initialize achievements if this is the first time
+    await AchievementService.initializeUserAchievements();
+    
+    final result = await AchievementService.getUserAchievements();
+    
+    if (!mounted) return;
+
+    if (result['success']) {
+      setState(() {
+        _achievements = result['achievements'] ?? [];
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage = result['message'] ?? 'Failed to load achievements';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +75,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
       return Scaffold(
         appBar: AppBar(title: const Text("Profile")),
         body: Center(
-          child: Text(_errorMessage, style: const TextStyle(color: Colors.red)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_errorMessage, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  _loadUserData();
+                  _loadAchievements();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -211,78 +213,139 @@ class _UserProfilePageState extends State<UserProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Text(
-                    'ความสำเร็จ',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueGrey,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'ความสำเร็จ',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _loadAchievements,
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'รีเฟรชความสำเร็จ',
+                      ),
+                    ],
                   ),
                   const Divider(
                     height: 20,
                     thickness: 2,
                     color: Colors.blueGrey,
                   ),
-                  ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: achievements.length,
-                    itemBuilder: (context, index) {
-                      final achievement = achievements[index];
-                      final bool isAchieved = achievement['isAchieved'] as bool;
+                  _achievements.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: Text(
+                              'ไม่มีข้อมูลความสำเร็จ',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: _achievements.length,
+                          itemBuilder: (context, index) {
+                            final achievement = _achievements[index];
+                            final bool isAchieved = achievement.achieved;
+                            final double progress = achievement.target > 0 
+                                ? (achievement.current / achievement.target).clamp(0.0, 1.0)
+                                : 0.0;
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8.0),
-                        elevation: isAchieved ? 3 : 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        color: isAchieved
-                            ? Theme.of(context).cardTheme.color
-                            : Colors.grey[200],
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isAchieved
-                                ? Colors.teal[100]
-                                : Colors.grey[300],
-                            child: Icon(
-                              Icons.star,
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 8.0),
+                              elevation: isAchieved ? 3 : 1,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               color: isAchieved
-                                  ? Colors.teal[700]
-                                  : Colors.grey[500],
-                            ),
-                          ),
-                          title: Text(
-                            achievement['title']!,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: isAchieved
-                                  ? Colors.blueGrey
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                          subtitle: Text(
-                            achievement['description']!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: isAchieved
-                                  ? Colors.grey[600]
-                                  : Colors.grey[500],
-                            ),
-                          ),
-                          trailing: isAchieved
-                              ? null
-                              : const Icon(
-                                  Icons.lock,
-                                  size: 16,
-                                  color: Colors.grey,
+                                  ? Theme.of(context).cardTheme.color
+                                  : Colors.grey[200],
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: isAchieved
+                                      ? Colors.teal[100]
+                                      : Colors.grey[300],
+                                  child: Icon(
+                                    isAchieved ? Icons.star : Icons.star_border,
+                                    color: isAchieved
+                                        ? Colors.teal[700]
+                                        : Colors.grey[500],
+                                  ),
                                 ),
+                                title: Text(
+                                  achievement.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: isAchieved
+                                        ? Colors.blueGrey
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      achievement.description,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: isAchieved
+                                            ? Colors.grey[600]
+                                            : Colors.grey[500],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if (!isAchieved) ...[
+                                      Text(
+                                        'ความคืบหน้า: ${achievement.current}/${achievement.target}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      LinearProgressIndicator(
+                                        value: progress,
+                                        backgroundColor: Colors.grey[300],
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.teal[400]!
+                                        ),
+                                      ),
+                                    ] else ...[
+                                      Text(
+                                        'สำเร็จแล้ว',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.teal[600],
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                trailing: isAchieved
+                                    ? Icon(
+                                        Icons.check_circle,
+                                        color: Colors.teal[600],
+                                      )
+                                    : const Icon(
+                                        Icons.lock,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),

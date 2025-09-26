@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-// ปรับ path ให้ตรงโปรเจ็กต์ของคุณ
 import 'package:personal_wellness_tracker/app/daily_task_api.dart';
+import '../services/achievement_service.dart';
 
 class Palette {
   static const navy = Color(0xFF2E5077);  // ข้อความ/ไอคอนหลัก
@@ -136,6 +135,7 @@ class _DailyPageState extends State<DailyPage> {
   @override
   void initState() {
     super.initState();
+    AchievementService.ensureInitialized(); // centralized init
     _loadFromApi();
   }
 
@@ -184,6 +184,7 @@ class _DailyPageState extends State<DailyPage> {
 
   // ---------- น้ำ (แก้ว) ----------
   void _addWaterCups(int deltaCups) {
+    final prevDone = _doneCount();
     final before = waterCups;
     setState(() => waterCups = (waterCups + deltaCups).clamp(0, 200));
 
@@ -197,6 +198,12 @@ class _DailyPageState extends State<DailyPage> {
         }
       };
       await DailyTaskApi.saveDailyTask(data, DateTime.now());
+      await AchievementService.trackFirstRecordOnce(context);
+      await AchievementService.maybeTrackDayComplete(
+        context,
+        prevDone: prevDone,
+        newDone: _doneCount(),
+      );
     }, () {
       setState(() => waterCups = before);
     }, 'บันทึกน้ำ ${deltaCups >= 0 ? "+" : ""}$deltaCups แก้ว');
@@ -204,6 +211,7 @@ class _DailyPageState extends State<DailyPage> {
 
   // ---------- อารมณ์ ----------
   void _logMood(String emoji, {int intensity = 3}) {
+    final prevDone = _doneCount();
     final beforeEmoji = moodEmoji;
     final beforeInt = moodIntensity;
     setState(() {
@@ -221,6 +229,12 @@ class _DailyPageState extends State<DailyPage> {
         }
       };
       await DailyTaskApi.saveDailyTask(data, DateTime.now());
+      await AchievementService.trackFirstRecordOnce(context);
+      await AchievementService.maybeTrackDayComplete(
+        context,
+        prevDone: prevDone,
+        newDone: _doneCount(),
+      );
     }, () {
       setState(() {
         moodEmoji = beforeEmoji;
@@ -236,6 +250,7 @@ class _DailyPageState extends State<DailyPage> {
       if (start != null) {
         final delta = DateTime.now().difference(start).inMinutes;
         if (delta > 0) {
+          final prevDone = _doneCount();
           final beforeMin = exerciseMinutes;
           setState(() {
             _exerciseStopwatchOn = false;
@@ -247,13 +262,24 @@ class _DailyPageState extends State<DailyPage> {
             final data = {
               'exercise': {
                 'task_type': 'exercise',
-                'value_text': exerciseType.isEmpty ? 'ออกกำลังกาย' : exerciseType,
+                'value_text': exerciseType.isNotEmpty ? exerciseType : 'ออกกำลังกาย',
                 'value_number': exerciseMinutes.toDouble(),
                 'calories': exerciseCalories,
                 'completed': exerciseMinutes >= 30,
               }
             };
             await DailyTaskApi.saveDailyTask(data, DateTime.now());
+            await AchievementService.trackFirstRecordOnce(context);
+            await AchievementService.maybeTrackExerciseLogged(
+              context,
+              beforeMin: beforeMin,
+              afterMin: exerciseMinutes,
+            );
+            await AchievementService.maybeTrackDayComplete(
+              context,
+              prevDone: prevDone,
+              newDone: _doneCount(),
+            );
           }, () {
             setState(() {
               _exerciseStopwatchOn = false;
@@ -287,6 +313,7 @@ class _DailyPageState extends State<DailyPage> {
         initialMinutes: exerciseMinutes,
         initialCalories: exerciseCalories,
         onSubmit: (type, mins, kcal) {
+          final prevDone = _doneCount();
           final beforeType = exerciseType;
           final beforeMin = exerciseMinutes;
           final beforeKcal = exerciseCalories;
@@ -308,6 +335,17 @@ class _DailyPageState extends State<DailyPage> {
               }
             };
             await DailyTaskApi.saveDailyTask(data, DateTime.now());
+            await AchievementService.trackFirstRecordOnce(context);
+            await AchievementService.maybeTrackExerciseLogged(
+              context,
+              beforeMin: beforeMin,
+              afterMin: exerciseMinutes,
+            );
+            await AchievementService.maybeTrackDayComplete(
+              context,
+              prevDone: prevDone,
+              newDone: _doneCount(),
+            );
           }, () {
             setState(() {
               exerciseType = beforeType;
@@ -335,12 +373,14 @@ class _DailyPageState extends State<DailyPage> {
         }
       };
       await DailyTaskApi.saveDailyTask(data, DateTime.now());
+      await AchievementService.trackFirstRecordOnce(context);
     }, () {
       setState(() => sleepStartAt = before);
     }, 'เริ่มนอนตอนนี้');
   }
 
   void _wakeNow() {
+    final prevDone = _doneCount();
     final before = sleepEndAt;
     setState(() => sleepEndAt = DateTime.now());
     _safeSave(() async {
@@ -354,6 +394,12 @@ class _DailyPageState extends State<DailyPage> {
         }
       };
       await DailyTaskApi.saveDailyTask(data, DateTime.now());
+      await AchievementService.trackFirstRecordOnce(context);
+      await AchievementService.maybeTrackDayComplete(
+        context,
+        prevDone: prevDone,
+        newDone: _doneCount(),
+      );
     }, () {
       setState(() => sleepEndAt = before);
     }, 'ตื่นตอนนี้ (+${_sleepDurationInMinutes()} นาที)');
@@ -367,6 +413,7 @@ class _DailyPageState extends State<DailyPage> {
         endAt: sleepEndAt,
         quality: sleepQuality,
         onSubmit: (s, e, q) {
+          final prevDone = _doneCount();
           final beforeS = sleepStartAt;
           final beforeE = sleepEndAt;
           final beforeQ = sleepQuality;
@@ -388,6 +435,12 @@ class _DailyPageState extends State<DailyPage> {
               }
             };
             await DailyTaskApi.saveDailyTask(data, DateTime.now());
+            await AchievementService.trackFirstRecordOnce(context);
+            await AchievementService.maybeTrackDayComplete(
+              context,
+              prevDone: prevDone,
+              newDone: _doneCount(),
+            );
           }, () {
             setState(() {
               sleepStartAt = beforeS;
