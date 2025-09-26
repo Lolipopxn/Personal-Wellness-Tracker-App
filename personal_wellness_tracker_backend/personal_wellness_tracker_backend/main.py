@@ -443,47 +443,152 @@ def delete_task(
     return {"message": "Task deleted successfully"}
 
 # Achievement endpoints
-@app.post("/users/{user_id}/achievements/", response_model=schemas.Achievement, tags=["Achievements"])
-def create_achievement(
-    user_id: str, 
-    achievement: schemas.AchievementBase, 
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(deps.get_current_active_user)
+@app.post("/api/achievements/initialize", response_model=schemas.StandardResponse)
+async def initialize_user_achievements(
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db)
 ):
-    achievement_data = schemas.AchievementCreate(**achievement.dict(), user_id=user_id)
-    return crud.create_achievement(db=db, achievement=achievement_data)
+    """Initialize default achievements for a user"""
+    # Check if user already has achievements
+    existing_achievements = crud.get_user_achievements(db, current_user.uid)
+    if existing_achievements:
+        return schemas.StandardResponse(
+            success=True,
+            message="Achievements already initialized"
+        )
+    
+    # Default achievements to create
+    default_achievements = [
+        {
+            "type": "first_record",
+            "name": "ผู้ริเริ่ม",
+            "description": "สำเร็จบันทึกครั้งแรก",
+            "target": 1
+        },
+        {
+            "type": "meal_logging",
+            "name": "นักวางแผน",
+            "description": "บันทึกอาหารครบ 10 วัน",
+            "target": 10
+        },
+        {
+            "type": "exercise_logging",
+            "name": "นักออกกำลังกาย",
+            "description": "บันทึกการออกกำลังกายครบ 10 วัน",
+            "target": 10
+        },
+        {
+            "type": "goal_achievement",
+            "name": "ผู้เชี่ยวชาญ",
+            "description": "บรรลุเป้าหมายสุขภาพ 3 เป้าหมาย",
+            "target": 3
+        },
+        {
+            "type": "meal_planning",
+            "name": "นักวางแผนมื้ออาหาร",
+            "description": "วางแผนมื้ออาหารครบ 5 มื้อ",
+            "target": 5
+        },
+        {
+            "type": "streak_days",
+            "name": "นักพัฒนา",
+            "description": "บันทึกกิจกรรมครบ 20 วัน",
+            "target": 20
+        }
+    ]
+    
+    # Create achievements
+    for achievement_data in default_achievements:
+        achievement_create = schemas.AchievementCreate(
+            user_id=current_user.uid,
+            type=achievement_data["type"],
+            name=achievement_data["name"],
+            description=achievement_data["description"],
+            target=achievement_data["target"],
+            current=0
+        )
+        crud.create_achievement(db, achievement_create)
+    
+    return schemas.StandardResponse(
+        success=True,
+        message="Achievements initialized successfully"
+    )
 
-@app.get("/users/{user_id}/achievements/", response_model=List[schemas.Achievement], tags=["Achievements"])
-def read_user_achievements(
-    user_id: str, 
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(deps.get_current_active_user)
+@app.get("/api/achievements", response_model=schemas.StandardResponse)
+async def get_user_achievements(
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db)
 ):
-    return crud.get_user_achievements(db, user_id=user_id)
+    """Get all achievements for the current user"""
+    achievements = crud.get_user_achievements(db, current_user.uid)
+    return schemas.StandardResponse(
+        success=True,
+        message="Achievements retrieved successfully",
+        data=[{
+            "id": achievement.id,
+            "user_id": achievement.user_id,
+            "type": achievement.type,
+            "name": achievement.name,
+            "description": achievement.description,
+            "target": achievement.target,
+            "current": achievement.current,
+            "achieved": achievement.achieved,
+            "achieved_at": achievement.achieved_at.isoformat() if achievement.achieved_at else None,
+            "created_at": achievement.created_at.isoformat(),
+            "updated_at": achievement.updated_at.isoformat()
+        } for achievement in achievements]
+    )
 
-@app.put("/achievements/{achievement_id}", response_model=schemas.Achievement, tags=["Achievements"])
-def update_achievement(
-    achievement_id: str, 
-    achievement_update: schemas.AchievementUpdate, 
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(deps.get_current_active_user)
+@app.put("/api/achievements/update-progress", response_model=schemas.StandardResponse)
+async def update_achievement_progress(
+    request: dict,
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db)
 ):
-    db_achievement = crud.update_achievement(db, achievement_id=achievement_id, achievement_update=achievement_update)
-    if db_achievement is None:
-        raise HTTPException(status_code=404, detail="Achievement not found")
-    return db_achievement
-
-@app.delete("/achievements/{achievement_id}", tags=["Achievements"])
-def delete_achievement(
-    achievement_id: str, 
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(deps.get_current_active_user)
-):
-    db_achievement = crud.get_achievement(db, achievement_id=achievement_id)
-    if db_achievement is None:
-        raise HTTPException(status_code=404, detail="Achievement not found")
-    crud.delete_achievement(db, achievement_id=achievement_id)
-    return {"message": "Achievement deleted successfully"}
+    """Update achievement progress"""
+    achievement_type = request.get("achievement_type")
+    progress = request.get("progress", 1)
+    
+    # Get user's achievement of this type
+    achievements = crud.get_user_achievements(db, current_user.uid)
+    target_achievement = None
+    
+    for achievement in achievements:
+        if achievement.type == achievement_type and not achievement.achieved:
+            target_achievement = achievement
+            break
+    
+    if not target_achievement:
+        return schemas.StandardResponse(
+            success=False,
+            message="Achievement not found or already completed"
+        )
+    
+    # Update progress
+    new_current = target_achievement.current + progress
+    newly_achieved = []
+    
+    # Check if achievement is completed
+    achieved = new_current >= target_achievement.target
+    achieved_at = datetime.utcnow() if achieved and not target_achievement.achieved else target_achievement.achieved_at
+    
+    if achieved and not target_achievement.achieved:
+        newly_achieved.append(target_achievement.name)
+    
+    # Update achievement
+    achievement_update = schemas.AchievementUpdate(
+        current=new_current,
+        achieved=achieved,
+        achieved_at=achieved_at
+    )
+    
+    crud.update_achievement(db, target_achievement.id, achievement_update)
+    
+    return schemas.StandardResponse(
+        success=True,
+        message="Achievement progress updated",
+        data={"newly_achieved": newly_achieved}
+    )
 
 # Nutrition Database endpoints
 @app.post("/nutrition/", response_model=schemas.NutritionDatabase, tags=["Nutrition Database"])

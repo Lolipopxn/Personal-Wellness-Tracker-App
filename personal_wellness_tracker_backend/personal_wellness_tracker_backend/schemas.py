@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime, date
 from enum import Enum
 
@@ -297,7 +297,7 @@ class AppStatistics(AppStatisticsBase):
 class StandardResponse(BaseModel):
     success: bool
     message: str
-    data: Optional[dict] = None
+    data: Optional[Any] = None
 
 class PaginatedResponse(BaseModel):
     success: bool

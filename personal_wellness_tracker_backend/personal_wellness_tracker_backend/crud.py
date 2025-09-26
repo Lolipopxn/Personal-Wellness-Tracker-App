@@ -205,7 +205,17 @@ def delete_task(db: Session, task_id: str):
 
 # Achievement CRUD operations
 def get_user_achievements(db: Session, user_id: str):
-    return db.query(models.Achievement).filter(models.Achievement.user_id == user_id).all()
+    return db.query(models.Achievement).filter(
+        models.Achievement.user_id == user_id
+    ).order_by(models.Achievement.created_at).all()
+
+def get_achievement_by_type(db: Session, user_id: str, achievement_type: str):
+    return db.query(models.Achievement).filter(
+        and_(
+            models.Achievement.user_id == user_id,
+            models.Achievement.type == achievement_type
+        )
+    ).first()
 
 def get_achievement(db: Session, achievement_id: str):
     return db.query(models.Achievement).filter(models.Achievement.id == achievement_id).first()
