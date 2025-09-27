@@ -59,7 +59,7 @@ class _RegisterPageState extends State<RegisterPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Registration successful!'),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF79D7BE),
             ),
           );
           Navigator.pushReplacementNamed(context, '/login');
@@ -92,6 +92,7 @@ class _RegisterPageState extends State<RegisterPage> {
     const maxContentWidth = 500.0;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F4F0),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -113,60 +114,25 @@ class _RegisterPageState extends State<RegisterPage> {
                         style: TextStyle(
                           fontSize: titleFontSize,
                           fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2E5077),
                         ),
                       ),
                     ),
                     SizedBox(height: screenHeight * 0.04),
 
                     // Username
-                    Text(
-                      'Username *',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: bodyFontSize,
-                      ),
-                    ),
-                    TextFormField(
+                    _buildLabel('Username *', bodyFontSize),
+                    _buildTextField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        hintText: 'Choose a username',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter username';
-                        }
-                        return null;
-                      },
+                      hint: 'Choose a username',
                     ),
                     SizedBox(height: screenHeight * 0.03),
 
                     // Email
-                    Text(
-                      'Email *',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: bodyFontSize,
-                      ),
-                    ),
-                    TextFormField(
+                    _buildLabel('Email *', bodyFontSize),
+                    _buildTextField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        hintText: 'Your email address',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black),
-                        ),
-                      ),
+                      hint: 'Your email address',
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -181,26 +147,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(height: screenHeight * 0.03),
 
                     // Password
-                    Text(
-                      'Password *',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: bodyFontSize,
-                      ),
-                    ),
-                    TextFormField(
+                    _buildLabel('Password *', bodyFontSize),
+                    _buildTextField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
-                        hintText: 'Your password',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black),
-                        ),
-                      ),
-                      obscureText: true,
+                      hint: 'Your password',
+                      obscure: true,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter password';
@@ -214,26 +165,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(height: screenHeight * 0.03),
 
                     // Confirm Password
-                    Text(
-                      'Confirm Password *',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: bodyFontSize,
-                      ),
-                    ),
-                    TextFormField(
+                    _buildLabel('Confirm Password *', bodyFontSize),
+                    _buildTextField(
                       controller: _confirmPasswordController,
-                      decoration: const InputDecoration(
-                        hintText: 'Re-enter your password',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black),
-                        ),
-                      ),
-                      obscureText: true,
+                      hint: 'Re-enter your password',
+                      obscure: true,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please confirm password';
@@ -258,7 +194,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             onChanged: (value) {
                               setState(() => _agreeToTerms = value ?? false);
                             },
-                            activeColor: Colors.black,
+                            activeColor: const Color(0xFF2E5077),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -267,7 +203,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             text: TextSpan(
                               style: TextStyle(
                                 fontSize: bodyFontSize,
-                                color: Colors.black,
+                                color: const Color(0xFF2E5077),
                               ),
                               children: [
                                 const TextSpan(text: 'I agree to the '),
@@ -275,22 +211,20 @@ class _RegisterPageState extends State<RegisterPage> {
                                   text: 'Terms of Services',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4DA1A9),
                                   ),
                                   recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      // TODO: navigate to terms page
-                                    },
+                                    ..onTap = () {},
                                 ),
                                 const TextSpan(text: ' and '),
                                 TextSpan(
                                   text: 'Privacy Policy',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4DA1A9),
                                   ),
                                   recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      // TODO: navigate to privacy page
-                                    },
+                                    ..onTap = () {},
                                 ),
                                 const TextSpan(text: '.'),
                               ],
@@ -320,7 +254,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _register,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
+                          backgroundColor: const Color(0xFF2E5077),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -360,6 +294,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: bodyFontSize,
+                              color: const Color(0xFF4DA1A9),
                             ),
                           ),
                         ),
@@ -372,6 +307,43 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // Helper Widgets
+  Widget _buildLabel(String text, double fontSize) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: fontSize,
+        color: const Color(0xFF2E5077), // ✅ Primary
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    bool obscure = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.grey),
+        enabledBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: Color(0xFF4DA1A9)), // ✅ Secondary
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: Color(0xFF2E5077)), // ✅ Primary
+        ),
+      ),
+      validator: validator,
     );
   }
 }

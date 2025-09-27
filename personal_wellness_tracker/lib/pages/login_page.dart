@@ -45,7 +45,6 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success']) {
         if (context.mounted) {
-          // เช็คสถานะการกรอกข้อมูลโปรไฟล์
           await _checkProfileCompletion();
         }
       } else {
@@ -65,21 +64,18 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final apiService = ApiService();
       final userData = await apiService.getCurrentUser();
-      
-      print("DEBUG: User data from login: $userData"); // Debug line
-      
-      // เช็คว่า profile_completed เป็น true หรือไม่
+
+      print("DEBUG: User data from login: $userData");
+
       bool isProfileComplete = userData['profile_completed'] ?? false;
-      
+
       if (context.mounted) {
         if (isProfileComplete) {
-          // โปรไฟล์ครบถ้วนแล้ว ไปหน้าหลัก
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const MainScaffold()),
             (route) => false,
           );
         } else {
-          // โปรไฟล์ยังไม่ครบถ้วน ไปหน้ากรอกข้อมูล
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const Profile(isFromLogin: true)),
             (route) => false,
@@ -88,7 +84,6 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       print("Error checking profile completion: $e");
-      // ถ้าเกิดข้อผิดพลาด ให้ไปหน้าหลักตามปกติ
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const MainScaffold()),
@@ -110,6 +105,7 @@ class _LoginPageState extends State<LoginPage> {
     final horizontalPadding = screenWidth * 0.06;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F4F0),
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SafeArea(
@@ -139,6 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                             style: TextStyle(
                               fontSize: titleFontSize,
                               fontWeight: FontWeight.bold,
+                              color: const Color(0xFF2E5077),
                             ),
                           ),
                         ),
@@ -150,6 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: bodyFontSize,
                             fontWeight: FontWeight.bold,
+                            color: const Color(0xFF2E5077),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -158,15 +156,11 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: const InputDecoration(
                             hintText: 'Your email address',
                             hintStyle: TextStyle(color: Colors.grey),
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 10,
-                            ),
                             enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.grey),
+                              borderSide: BorderSide(color: Color(0xFF4DA1A9)),
                             ),
                             focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.black),
+                              borderSide: BorderSide(color: Color(0xFF2E5077)),
                             ),
                           ),
                           keyboardType: TextInputType.emailAddress,
@@ -190,6 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: bodyFontSize,
                             fontWeight: FontWeight.bold,
+                            color: const Color(0xFF2E5077),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -198,15 +193,11 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: const InputDecoration(
                             hintText: 'Your password',
                             hintStyle: TextStyle(color: Colors.grey),
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 10,
-                            ),
                             enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.grey),
+                              borderSide: BorderSide(color: Color(0xFF4DA1A9)),
                             ),
                             focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.black),
+                              borderSide: BorderSide(color: Color(0xFF2E5077)),
                             ),
                           ),
                           obscureText: true,
@@ -231,13 +222,14 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         SizedBox(height: screenHeight * 0.01),
+
                         // Sign in button
                         _isLoading
                             ? const Center(child: CircularProgressIndicator())
                             : ElevatedButton(
                                 onPressed: _login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
+                                  backgroundColor: const Color(0xFF2E5077),
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
@@ -249,7 +241,10 @@ class _LoginPageState extends State<LoginPage> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.arrow_forward),
+                                    const Icon(
+                                      Icons.arrow_forward,
+                                      color: Colors.white,
+                                    ),
                                     const SizedBox(width: 10),
                                     Text(
                                       'Sign In',
@@ -264,14 +259,21 @@ class _LoginPageState extends State<LoginPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text("Don't have an account? "),
+                            Text(
+                              "Don't have an account? ",
+                              style: TextStyle(fontSize: bodyFontSize),
+                            ),
                             GestureDetector(
                               onTap: () {
                                 Navigator.pushNamed(context, '/register');
                               },
-                              child: const Text(
+                              child: Text(
                                 'Register',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: bodyFontSize,
+                                  color: const Color(0xFF4DA1A9),
+                                ),
                               ),
                             ),
                           ],
