@@ -105,8 +105,15 @@ class FoodLog(FoodLogBase):
 # Meal schemas
 class MealBase(BaseModel):
     food_name: Optional[str] = None
+    description: Optional[str] = None
     meal_type: Optional[MealTypeEnum] = None
-    calories: Optional[int] = 0  # เพิ่มฟิลด์แคลอรี่
+    calories: Optional[int] = 0
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
+    fiber: Optional[float] = None
+    sugar: Optional[float] = None
+    has_nutrition_data: Optional[bool] = False
     image_url: Optional[str] = None
 
 class MealCreate(MealBase):
@@ -141,6 +148,27 @@ class MealWithNutrition(Meal):
     fat: Optional[float] = None
     fiber: Optional[float] = None
     sugar: Optional[float] = None
+
+# Nutrition Cache schemas
+class NutritionCacheBase(BaseModel):
+    food_name: str
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
+    fiber: Optional[float] = None
+    sugar: Optional[float] = None
+    source: str = 'mock_api'
+
+class NutritionCacheCreate(NutritionCacheBase):
+    pass
+
+class NutritionCache(NutritionCacheBase):
+    id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # Daily Task schemas
 class DailyTaskBase(BaseModel):

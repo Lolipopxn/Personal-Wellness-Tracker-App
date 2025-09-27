@@ -102,8 +102,15 @@ class Meal(Base):
     food_log_id = Column(String, ForeignKey("food_logs.id"), nullable=False)
     user_id = Column(String, ForeignKey("users.uid"), nullable=False)
     food_name = Column(String)
+    description = Column(Text)
     meal_type = Column(Enum(MealTypeEnum))
-    calories = Column(Integer, default=0)  # เพิ่มฟิลด์แคลอรี่
+    calories = Column(Integer, default=0)
+    protein = Column(Float)
+    carbs = Column(Float)
+    fat = Column(Float)
+    fiber = Column(Float)
+    sugar = Column(Float)
+    has_nutrition_data = Column(Boolean, default=False)
     image_url = Column(String)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -159,8 +166,8 @@ class Achievement(Base):
     # Relationships
     user = relationship("User", back_populates="achievements")
 
-class NutritionDatabase(Base):
-    __tablename__ = "nutrition_database"
+class NutritionCache(Base):
+    __tablename__ = "nutrition_cache"
     
     id = Column(String, primary_key=True)
     food_name = Column(String, nullable=False, unique=True)
@@ -170,7 +177,8 @@ class NutritionDatabase(Base):
     fat = Column(Float)
     fiber = Column(Float)
     sugar = Column(Float)
-    last_updated = Column(DateTime, default=func.now())
+    source = Column(String, default='mock_api')
+    created_at = Column(DateTime, default=func.now())
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"

@@ -51,9 +51,16 @@ class _FoodSavePageState extends State<FoodSavePage> {
           'id': meal['id'],
           'name': meal['food_name'],
           'type': _convertMealType(meal['meal_type']),
-          'cal': meal['calories'] ?? 0,  // ใช้แคลอรี่จริงจากฐานข้อมูล
-          'desc': meal['food_name'] ?? '',
+          'cal': meal['calories'] ?? 0,
+          'desc': meal['description'] ?? meal['food_name'] ?? '',
           'image_url': meal['image_url'],
+          // เพิ่มข้อมูลโภชนาการจากฐานข้อมูล
+          'has_nutrition_data': meal['has_nutrition_data'] ?? false,
+          'protein': meal['protein'],
+          'carbs': meal['carbs'],
+          'fat': meal['fat'],
+          'fiber': meal['fiber'],
+          'sugar': meal['sugar'],
         }).toList();
       }
       
@@ -107,6 +114,35 @@ class _FoodSavePageState extends State<FoodSavePage> {
     }
   }
 
+  // สร้าง NutritionData จากข้อมูล meal - ให้ความสำคัญกับข้อมูลที่บันทึกไว้ก่อน
+  Future<NutritionData?> _createNutritionDataFromMeal(Map<String, dynamic> meal) async {
+    // ถ้ามีข้อมูลโภชนาการในฐานข้อมูลแล้ว ใช้ข้อมูลนั้น
+    if (meal['has_nutrition_data'] == true && 
+        meal['protein'] != null && 
+        meal['carbs'] != null && 
+        meal['fat'] != null) {
+      return NutritionData(
+        calories: (meal['cal'] ?? 0).toDouble(),
+        protein: (meal['protein'] ?? 0.0).toDouble(),
+        carbs: (meal['carbs'] ?? 0.0).toDouble(),
+        fat: (meal['fat'] ?? 0.0).toDouble(),
+        fiber: (meal['fiber'] ?? 0.0).toDouble(),
+        sugar: (meal['sugar'] ?? 0.0).toDouble(),
+      );
+    }
+    
+    // ถ้าไม่มีข้อมูลในฐานข้อมูล ให้ดึงจาก Mock API
+    try {
+      if (meal['name'] != null && meal['name'].toString().isNotEmpty) {
+        return await NutritionService.getNutritionData(meal['name']);
+      }
+    } catch (e) {
+      print('Error fetching nutrition data: $e');
+    }
+    
+    return null;
+  }
+
   Future<void> _deleteMeal(String mealId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -145,7 +181,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
     }
   }
 
-  void _showMealDialog({Map<String, dynamic>? meal}) {
+  Future<void> _showMealDialog({Map<String, dynamic>? meal}) async {
     final formKey = GlobalKey<FormState>();
     final List<String> mealTypes = ['มื้อเช้า', 'กลางวัน', 'เย็น', 'ของว่าง'];
     final picker = ImagePicker();
@@ -155,10 +191,43 @@ class _FoodSavePageState extends State<FoodSavePage> {
       text: meal?['cal']?.toString() ?? '',
     );
     final descController = TextEditingController(text: meal?['desc'] ?? '');
+    final proteinController = TextEditingController();
+    final carbsController = TextEditingController();
+    final fatController = TextEditingController();
+    final fiberController = TextEditingController();
+    final sugarController = TextEditingController();
     File? pickedImage;
     NutritionData? nutritionData;
     bool isLoadingNutrition = false;
+    bool showNutritionFields = false;
     Timer? searchTimer;
+    
+
+
+    // โหลดข้อมูลที่มีอยู่แล้วถ้าเป็นการแก้ไข
+    if (meal != null) {
+      // ถ้ามีข้อมูลโภชนาการที่บันทึกไว้แล้ว
+      if (meal['has_nutrition_data'] == true) {
+        proteinController.text = (meal['protein'] ?? 0.0).toString();
+        carbsController.text = (meal['carbs'] ?? 0.0).toString();
+        fatController.text = (meal['fat'] ?? 0.0).toString();
+        fiberController.text = (meal['fiber'] ?? 0.0).toString();  
+        sugarController.text = (meal['sugar'] ?? 0.0).toString();
+        showNutritionFields = true;
+        
+        // สร้าง NutritionData จากข้อมูลที่บันทึกไว้
+        nutritionData = NutritionData(
+          calories: (meal['cal'] ?? 0).toDouble(),
+          protein: (meal['protein'] ?? 0.0).toDouble(),
+          carbs: (meal['carbs'] ?? 0.0).toDouble(),
+          fat: (meal['fat'] ?? 0.0).toDouble(),
+          fiber: (meal['fiber'] ?? 0.0).toDouble(),
+          sugar: (meal['sugar'] ?? 0.0).toDouble(),
+        );
+        
+
+      }
+    }
 
     Future<void> fetchNutritionData(
       StateSetter setStateDialog, [
@@ -180,6 +249,16 @@ class _FoodSavePageState extends State<FoodSavePage> {
           nutritionData = data;
           if (data != null) {
             calController.text = data.calories.toInt().toString();
+            
+            // เติมข้อมูลโภชนาการเฉพาะเมื่อยังไม่มีข้อมูลหรือเป็นการค้นหาใหม่
+            if (meal == null || meal['has_nutrition_data'] != true) {
+              proteinController.text = data.protein.toStringAsFixed(1);
+              carbsController.text = data.carbs.toStringAsFixed(1);
+              fatController.text = data.fat.toStringAsFixed(1);
+              fiberController.text = data.fiber.toStringAsFixed(1);
+              sugarController.text = data.sugar.toStringAsFixed(1);
+            }
+            showNutritionFields = true;
           }
           isLoadingNutrition = false;
         });
@@ -202,7 +281,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
       });
     }
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -218,6 +297,26 @@ class _FoodSavePageState extends State<FoodSavePage> {
           ),
           child: StatefulBuilder(
             builder: (context, setStateDialog) {
+              void updateNutritionChart() {
+                double calories = double.tryParse(calController.text) ?? 0;
+                double protein = double.tryParse(proteinController.text) ?? 0;
+                double carbs = double.tryParse(carbsController.text) ?? 0;
+                double fat = double.tryParse(fatController.text) ?? 0;
+                double fiber = double.tryParse(fiberController.text) ?? 0;
+                double sugar = double.tryParse(sugarController.text) ?? 0;
+
+                setStateDialog(() {
+                  nutritionData = NutritionData(
+                    calories: calories,
+                    protein: protein,
+                    carbs: carbs,
+                    fat: fat,
+                    fiber: fiber,
+                    sugar: sugar,
+                  );
+                });
+              }
+              
               return SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -374,14 +473,148 @@ class _FoodSavePageState extends State<FoodSavePage> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           suffixText: 'cal',
-                          enabled: nutritionData == null,
                           helperText: nutritionData != null
-                              ? 'ใช้ข้อมูลจาก API'
+                              ? 'ข้อมูลเริ่มต้นจาก API'
                               : 'กรอกค่าเอง (ถ้าทราบ)',
                         ),
                         keyboardType: TextInputType.number,
                         controller: calController,
+                        onChanged: (value) => updateNutritionChart(),
                       ),
+
+                      
+                      
+                      // ช่องกรอกข้อมูลโภชนาการ
+                      if (showNutritionFields || nutritionData != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue[100]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.edit, color: Colors.blue[600], size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'ข้อมูลโภชนาการ',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      decoration: InputDecoration(
+                                        labelText: 'โปรตีน',
+                                        suffixText: 'g',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      controller: proteinController,
+                                      onChanged: (value) => updateNutritionChart(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextFormField(
+                                      decoration: InputDecoration(
+                                        labelText: 'คาร์บ',
+                                        suffixText: 'g',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      controller: carbsController,
+                                      onChanged: (value) => updateNutritionChart(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      decoration: InputDecoration(
+                                        labelText: 'ไขมัน',
+                                        suffixText: 'g',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      controller: fatController,
+                                      onChanged: (value) => updateNutritionChart(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextFormField(
+                                      decoration: InputDecoration(
+                                        labelText: 'ใยอาหาร',
+                                        suffixText: 'g',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      controller: fiberController,
+                                      onChanged: (value) => updateNutritionChart(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                decoration: InputDecoration(
+                                  labelText: 'น้ำตาล',
+                                  suffixText: 'g',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                keyboardType: TextInputType.number,
+                                controller: sugarController,
+                                onChanged: (value) => updateNutritionChart(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 16),
                       if (isLoadingNutrition)
@@ -475,19 +708,43 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
                                     // คำนวณแคลอรี่จาก nutrition data หรือจากที่ผู้ใช้ป้อน
                                     int calories = 0;
-                                    if (nutritionData != null) {
-                                      calories = nutritionData!.calories.toInt();
-                                    } else if (calController.text.isNotEmpty) {
+                                    if (calController.text.isNotEmpty) {
                                       calories = int.tryParse(calController.text) ?? 0;
                                     }
+
+                                    // รับค่าโภชนาการจากที่ผู้ใช้แก้ไข
+                                    double? protein = proteinController.text.isNotEmpty 
+                                        ? double.tryParse(proteinController.text) : null;
+                                    double? carbs = carbsController.text.isNotEmpty 
+                                        ? double.tryParse(carbsController.text) : null;
+                                    double? fat = fatController.text.isNotEmpty 
+                                        ? double.tryParse(fatController.text) : null;
+                                    double? fiber = fiberController.text.isNotEmpty 
+                                        ? double.tryParse(fiberController.text) : null;
+                                    double? sugar = sugarController.text.isNotEmpty 
+                                        ? double.tryParse(sugarController.text) : null;
+                                    
+                                    // เช็คว่ามีการแก้ไขข้อมูลโภชนาการหรือไม่
+                                    bool hasNutritionData = (protein != null && protein > 0) || 
+                                                           (carbs != null && carbs > 0) || 
+                                                           (fat != null && fat > 0) || 
+                                                           (fiber != null && fiber > 0) || 
+                                                           (sugar != null && sugar > 0);
 
                                     if (meal?['id'] != null) {
                                       // อัปเดต meal ที่มีอยู่
                                       await _apiService.updateMeal(
                                         mealId: meal!['id'],
                                         foodName: nameController.text.trim(),
+                                        description: descController.text.trim(),
                                         mealType: _convertMealTypeToApi(type!),
                                         calories: calories,
+                                        protein: protein,
+                                        carbs: carbs,
+                                        fat: fat,
+                                        fiber: fiber,
+                                        sugar: sugar,
+                                        hasNutritionData: hasNutritionData,
                                         imageUrl: imageUrl,
                                       );
                                     } else {
@@ -505,8 +762,15 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                         foodLogId: _currentFoodLogId!,
                                         userId: userId,
                                         foodName: nameController.text.trim(),
+                                        description: descController.text.trim(),
                                         mealType: _convertMealTypeToApi(type!),
                                         calories: calories,
+                                        protein: protein,
+                                        carbs: carbs,
+                                        fat: fat,
+                                        fiber: fiber,
+                                        sugar: sugar,
+                                        hasNutritionData: hasNutritionData,
                                         imageUrl: imageUrl,
                                       );
                                     }
@@ -813,7 +1077,11 @@ class _FoodSavePageState extends State<FoodSavePage> {
                         (meal) => MealCard(
                           key: ValueKey(meal['id']),
                           meal: meal,
-                          onEdit: () => _showMealDialog(meal: meal),
+                          onEdit: () async {
+                            await _showMealDialog(meal: meal);
+                            // Refresh ข้อมูลหลังจากแก้ไขเสร็จ
+                            _loadFoodLogs();
+                          },
                           onDelete: () => _deleteMeal(meal['id']),
                         ),
                       ),
@@ -861,7 +1129,26 @@ class _MealCardState extends State<MealCard> {
     }
 
     try {
-      final data = await NutritionService.getNutritionData(widget.meal['name']);
+      NutritionData? data;
+      
+      // ถ้ามีข้อมูลโภชนาการที่บันทึกไว้แล้ว ใช้ข้อมูลนั้น
+      if (widget.meal['has_nutrition_data'] == true && 
+          widget.meal['protein'] != null && 
+          widget.meal['carbs'] != null && 
+          widget.meal['fat'] != null) {
+        data = NutritionData(
+          calories: (widget.meal['cal'] ?? 0).toDouble(),
+          protein: (widget.meal['protein'] ?? 0.0).toDouble(),
+          carbs: (widget.meal['carbs'] ?? 0.0).toDouble(),
+          fat: (widget.meal['fat'] ?? 0.0).toDouble(),
+          fiber: (widget.meal['fiber'] ?? 0.0).toDouble(),
+          sugar: (widget.meal['sugar'] ?? 0.0).toDouble(),
+        );
+      } else {
+        // ถ้าไม่มีข้อมูลที่บันทึกไว้ ให้ดึงจาก Mock API
+        data = await NutritionService.getNutritionData(widget.meal['name']);
+      }
+      
       if (mounted) {
         setState(() {
           _nutritionData = data;
@@ -874,6 +1161,16 @@ class _MealCardState extends State<MealCard> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // เพิ่ม method สำหรับ refresh ข้อมูลโภชนาการหลังจากแก้ไข
+  void refreshNutritionData() {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+      _fetchNutritionDetails();
     }
   }
 
@@ -956,6 +1253,8 @@ class _MealCardState extends State<MealCard> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
+                        const SizedBox(height: 6),
+                        
                       ],
                     ),
                   ),
@@ -992,6 +1291,26 @@ class _MealCardState extends State<MealCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // แสดงสถานะข้อมูล
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 14,
+                                color: Colors.grey[600],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'ข้อมูลโภชนาการ',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
                           _buildNutrientRow(
                             'โปรตีน',
                             '${_nutritionData!.protein.toStringAsFixed(1)}g',

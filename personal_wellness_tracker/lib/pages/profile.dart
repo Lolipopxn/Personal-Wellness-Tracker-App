@@ -63,40 +63,80 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     try {
       final currentUser = await _apiService.getCurrentUser();
       print("DEBUG: Loading user data: $currentUser"); // Debug line
+      
+      // โหลดข้อมูลเป้าหมายแยกต่างหาก
+      Map<String, dynamic>? userGoals;
+      Map<String, dynamic>? userPreferences;
+      
+      final String userId = currentUser['uid']?.toString() ?? currentUser['id']?.toString() ?? '';
+      
+      if (userId.isNotEmpty) {
+        try {
+          // ดึงข้อมูลเป้าหมายจาก user_goals table
+          userGoals = await _apiService.getUserGoals(userId);
+          print("DEBUG: Loading user goals: $userGoals");
+        } catch (e) {
+          print("DEBUG: Error loading user goals: $e");
+        }
+        
+        try {
+          // ดึงข้อมูล preferences จาก user_preferences table
+          userPreferences = await _apiService.getUserPreferences(userId);
+          print("DEBUG: Loading user preferences: $userPreferences");
+        } catch (e) {
+          print("DEBUG: Error loading user preferences: $e");
+        }
+      }
+      
       if (mounted) {
         setState(() {
-          // โหลดข้อมูลพื้นฐาน
+          // โหลดข้อมูลพื้นฐานจาก users table
           _ageController.text = currentUser['age']?.toString() ?? '';
           _selectedGender = currentUser['gender'];
           _weightController.text = currentUser['weight']?.toString() ?? '';
           _heightController.text = currentUser['height']?.toString() ?? '';
           
-          // โหลดข้อมูลเป้าหมาย (ถ้ามี)
-          if (currentUser['goals'] != null) {
-            final goals = currentUser['goals'];
-            _goalWeightController.text = goals['goal_weight']?.toString() ?? goals['weight']?.toString() ?? '';
-            _goalExerciseController.text = goals['goal_exercise_frequency']?.toString() ?? goals['exerciseFrequency']?.toString() ?? '';
-            _goalExerciseMinutesController.text = goals['goal_exercise_minutes']?.toString() ?? goals['exerciseMinutes']?.toString() ?? '';
-            _goalWaterController.text = goals['goal_water_intake']?.toString() ?? goals['waterIntake']?.toString() ?? '';
-          }
-          
-          // โหลดข้อมูลสุขภาพ (ถ้ามี)
-          if (currentUser['preferences'] != null) {
-            final prefs = currentUser['preferences'];
-            _bpController.text = prefs['bloodPressure'] ?? '';
-            _hrController.text = prefs['heartRate']?.toString() ?? '';
-          }
-          
-          // รองรับข้อมูลจาก FastAPI structure
+          // โหลดข้อมูลสุขภาพจาก users table (FastAPI structure)
           if (currentUser['blood_pressure'] != null) {
-            _bpController.text = currentUser['blood_pressure'];
+            _bpController.text = currentUser['blood_pressure'].toString();
           }
           if (currentUser['heart_rate'] != null) {
             _hrController.text = currentUser['heart_rate'].toString();
           }
           
+          // โหลดข้อมูลเป้าหมายจาก user_goals table
+          if (userGoals != null) {
+            _goalWeightController.text = userGoals['goal_weight']?.toString() ?? '';
+            _goalExerciseController.text = userGoals['goal_exercise_frequency']?.toString() ?? '';
+            _goalExerciseMinutesController.text = userGoals['goal_exercise_minutes']?.toString() ?? '';
+            _goalWaterController.text = userGoals['goal_water_intake']?.toString() ?? '';
+            print("DEBUG: Loaded goals from user_goals table - Weight: ${_goalWeightController.text}, Exercise: ${_goalExerciseController.text}, Minutes: ${_goalExerciseMinutesController.text}, Water: ${_goalWaterController.text}");
+          } 
+          // Fallback: ถ้าไม่มีข้อมูลจาก user_goals table ให้ลองดึงจาก embedded goals ใน currentUser
+          else if (currentUser['goals'] != null) {
+            final goals = currentUser['goals'];
+            _goalWeightController.text = goals['goal_weight']?.toString() ?? goals['weight']?.toString() ?? '';
+            _goalExerciseController.text = goals['goal_exercise_frequency']?.toString() ?? goals['exerciseFrequency']?.toString() ?? '';
+            _goalExerciseMinutesController.text = goals['goal_exercise_minutes']?.toString() ?? goals['exerciseMinutes']?.toString() ?? '';
+            _goalWaterController.text = goals['goal_water_intake']?.toString() ?? goals['waterIntake']?.toString() ?? '';
+            print("DEBUG: Loaded goals from embedded goals - Weight: ${_goalWeightController.text}, Exercise: ${_goalExerciseController.text}, Minutes: ${_goalExerciseMinutesController.text}, Water: ${_goalWaterController.text}");
+          } else {
+            print("DEBUG: No user goals found from any source");
+          }
+          
+          // โหลดข้อมูลสุขภาพจาก user_preferences table (สำหรับข้อมูลเพิ่มเติม)
+          if (userPreferences != null) {
+            // ถ้า preferences มีข้อมูลสุขภาพที่ละเอียดกว่า ให้ใช้จาก preferences
+            if (userPreferences['bloodPressure'] != null && userPreferences['bloodPressure'].toString().isNotEmpty) {
+              _bpController.text = userPreferences['bloodPressure'].toString();
+            }
+            if (userPreferences['heartRate'] != null) {
+              _hrController.text = userPreferences['heartRate'].toString();
+            }
+          }
+          
           // โหลดปัญหาสุขภาพ
-          _loadHealthProblems(currentUser);
+          _loadHealthProblems(currentUser, userPreferences);
         });
       }
     } catch (e) {
@@ -104,7 +144,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
-  void _loadHealthProblems(Map<String, dynamic> currentUser) {
+  void _loadHealthProblems(Map<String, dynamic> currentUser, [Map<String, dynamic>? userPreferences]) {
     final List<String> problemsOptions = [
       'โรคเบาหวาน',
       'โรคความดันโลหิตสูง',
@@ -136,6 +176,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         existingProblems = currentUser['preferences']['healthProblems'].split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
       } else if (currentUser['preferences']['healthProblems'] is List) {
         existingProblems = currentUser['preferences']['healthProblems'].cast<String>();
+      }
+    }
+    // Try from userPreferences parameter (จาก user_preferences table)
+    else if (userPreferences != null) {
+      if (userPreferences['healthProblems'] is String && userPreferences['healthProblems'].isNotEmpty) {
+        existingProblems = userPreferences['healthProblems'].split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      } else if (userPreferences['healthProblems'] is List) {
+        existingProblems = userPreferences['healthProblems'].cast<String>();
       }
     }
     

@@ -471,7 +471,7 @@ class ApiService {
     final headers = await getHeaders();
 
     final response = await http.put(
-      Uri.parse('$baseUrl/users/$userId/goals'),
+      Uri.parse('$baseUrl/users/$userId/goals/'),
       headers: headers,
       body: jsonEncode({
         'goal_weight': goals['goal_weight'],
@@ -497,7 +497,7 @@ class ApiService {
     final headers = await getHeaders();
 
     final response = await http.put(
-      Uri.parse('$baseUrl/users/$userId/preferences'),
+      Uri.parse('$baseUrl/users/$userId/preferences/'),
       headers: headers,
       body: jsonEncode(healthInfo),
     );
@@ -571,8 +571,15 @@ class ApiService {
     required String foodLogId,
     required String userId,
     required String foodName,
+    String? description,
     required String mealType,
     int? calories,
+    double? protein,
+    double? carbs,
+    double? fat,
+    double? fiber,
+    double? sugar,
+    bool? hasNutritionData,
     String? imageUrl,
   }) async {
     final headers = await getHeaders();
@@ -584,8 +591,15 @@ class ApiService {
         'food_log_id': foodLogId,
         'user_id': userId,
         'food_name': foodName,
+        if (description != null && description.isNotEmpty) 'description': description,
         'meal_type': mealType,
         if (calories != null) 'calories': calories,
+        if (protein != null) 'protein': protein,
+        if (carbs != null) 'carbs': carbs,
+        if (fat != null) 'fat': fat,
+        if (fiber != null) 'fiber': fiber,
+        if (sugar != null) 'sugar': sugar,
+        if (hasNutritionData != null) 'has_nutrition_data': hasNutritionData,
         if (imageUrl != null) 'image_url': imageUrl,
       }),
     );
@@ -600,8 +614,15 @@ class ApiService {
   Future<Map<String, dynamic>> updateMeal({
     required String mealId,
     required String foodName,
+    String? description,
     required String mealType,
     int? calories,
+    double? protein,
+    double? carbs,
+    double? fat,
+    double? fiber,
+    double? sugar,
+    bool? hasNutritionData,
     String? imageUrl,
   }) async {
     final headers = await getHeaders();
@@ -611,8 +632,15 @@ class ApiService {
       headers: headers,
       body: jsonEncode({
         'food_name': foodName,
+        if (description != null && description.isNotEmpty) 'description': description,
         'meal_type': mealType,
         if (calories != null) 'calories': calories,
+        if (protein != null) 'protein': protein,
+        if (carbs != null) 'carbs': carbs,
+        if (fat != null) 'fat': fat,
+        if (fiber != null) 'fiber': fiber,
+        if (sugar != null) 'sugar': sugar,
+        if (hasNutritionData != null) 'has_nutrition_data': hasNutritionData,
         if (imageUrl != null) 'image_url': imageUrl,
       }),
     );
@@ -700,6 +728,72 @@ class ApiService {
     } catch (e) {
       print('Error uploading image: $e');
       rethrow;
+    }
+  }
+
+  // Get user goals
+  Future<Map<String, dynamic>?> getUserGoals(String userId) async {
+    try {
+      final headers = await getHeaders();
+      final url = '$baseUrl/users/$userId/goals/';  // เพิ่ม slash ท้าย
+      print("DEBUG: Getting user goals from URL: $url");
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+      
+      print("DEBUG: Get user goals response status: ${response.statusCode}");
+      print("DEBUG: Get user goals response body: ${response.body}");
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Backend ส่งกลับมาเป็น List แต่เราต้องการ single object
+        if (data is List && data.isNotEmpty) {
+          return Map<String, dynamic>.from(data.first);  // เอา item แรกและ cast เป็น Map<String, dynamic>
+        } else if (data is Map) {
+          return Map<String, dynamic>.from(data);  // ถ้าเป็น Map ให้ cast และส่งกลับ
+        } else {
+          return null;  // ถ้าไม่มีข้อมูล
+        }
+      } else if (response.statusCode == 404) {
+        // Goals not found, return null
+        return null;
+      } else {
+        throw Exception('Failed to get user goals: ${response.body}');
+      }
+    } catch (e) {
+      print("DEBUG: Error getting user goals: $e");
+      return null; // Return null instead of throwing to handle gracefully
+    }
+  }
+
+  // Get user preferences
+  Future<Map<String, dynamic>?> getUserPreferences(String userId) async {
+    try {
+      final headers = await getHeaders();
+      final url = '$baseUrl/users/$userId/preferences/';  // เพิ่ม slash ท้าย
+      print("DEBUG: Getting user preferences from URL: $url");
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+      
+      print("DEBUG: Get user preferences response status: ${response.statusCode}");
+      print("DEBUG: Get user preferences response body: ${response.body}");
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 404) {
+        // Preferences not found, return null
+        return null;
+      } else {
+        throw Exception('Failed to get user preferences: ${response.body}');
+      }
+    } catch (e) {
+      print("DEBUG: Error getting user preferences: $e");
+      return null; // Return null instead of throwing to handle gracefully
     }
   }
 }

@@ -83,7 +83,14 @@ CREATE TABLE "meals" (
   "user_id" varchar NOT NULL,
   "food_name" varchar,
   "meal_type" meal_type,
+  "description" text,
   "calories" integer DEFAULT 0,
+  "protein" double precision,
+  "carbs" double precision,
+  "fat" double precision,
+  "fiber" double precision,
+  "sugar" double precision,
+  "has_nutrition_data" boolean DEFAULT false,
   "image_url" varchar,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now())
@@ -121,18 +128,6 @@ CREATE TABLE "achievements" (
   "achieved_at" timestamp,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now())
-);
-
-CREATE TABLE "nutrition_database" (
-  "id" varchar PRIMARY KEY,
-  "food_name" varchar NOT NULL,
-  "calories" double precision,
-  "protein" double precision,
-  "carbs" double precision,
-  "fat" double precision,
-  "fiber" double precision,
-  "sugar" double precision,
-  "last_updated" timestamp DEFAULT (now())
 );
 
 CREATE TABLE "user_preferences" (
@@ -174,7 +169,7 @@ CREATE INDEX ON "tasks" ("task_type");
 CREATE INDEX ON "achievements" ("user_id");
 CREATE INDEX ON "achievements" ("type");
 CREATE INDEX ON "achievements" ("achieved");
-CREATE UNIQUE INDEX ON "nutrition_database" ("food_name");
+CREATE INDEX ON "meals" ("has_nutrition_data");
 CREATE UNIQUE INDEX ON "user_preferences" ("user_id");
 
 -- Add Foreign Keys
