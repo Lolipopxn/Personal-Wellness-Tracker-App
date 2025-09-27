@@ -152,7 +152,6 @@ class AchievementService {
     }
   }
 
-  // High-level: when tasks completed go from <4 to 4 per day
   static Future<void> maybeTrackDayComplete(
     BuildContext context, {
     required int prevDone,
@@ -182,8 +181,102 @@ class AchievementService {
 
   static void _showUnlockedSnack(BuildContext context, List<String> names) {
     if (names.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('ปลดล็อกความสำเร็จ: ${names.join(", ")}')),
+
+    // Palette
+    final bg = const Color(0xFFFFFFFF);
+    final chipBg = const Color(0xFFCBF1F5);
+    final border = const Color(0xFFF6F4F0);
+    final accent = const Color(0xFF2E5077);
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: bg,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: border, width: 2),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [chipBg, accent.withOpacity(0.2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withOpacity(0.12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.emoji_events_rounded, color: accent, size: 34),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'ยินดีด้วย!',
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'คุณปลดล็อกความสำเร็จ',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              runSpacing: 8,
+              children: names.map((n) {
+                return Chip(
+                  backgroundColor: chipBg,
+                  shape: StadiumBorder(side: BorderSide(color: border)),
+                  avatar: Icon(Icons.star_rounded, color: accent, size: 18),
+                  label: Text(
+                    n,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('ปิด'),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
