@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart'; // ThemeProvider
 import '../services/auth_service.dart';
 import '../app/notification_service.dart';
+import '../providers/user_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -14,7 +15,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool notificationsEnabled = true;
 
@@ -30,14 +30,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
     final result = await AuthService.getCurrentUser();
     if (mounted) {
-      setState(() {
-        if (result['success']) {
-          _userData = result['user'];
-        } else {
-          _userData = {};
-        }
-        _isLoading = false;
-      });
+      if (result['success']) {
+        Provider.of<UserProvider>(
+          context,
+          listen: false,
+        ).setUserData(result['user']);
+      }
+      setState(() => _isLoading = false);
     }
   }
 
@@ -53,6 +52,11 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) Navigator.pop(context);
 
     if (result['success']) {
+      Provider.of<UserProvider>(
+        context,
+        listen: false,
+      ).updateUsername(newUsername);
+
       _showResultPopup("อัปเดตชื่อผู้ใช้สำเร็จ", true);
       _loadAllUserData();
     } else {
@@ -204,12 +208,15 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final userProvider = Provider.of<UserProvider>(context);
+    final userData = userProvider.userData;
+
     final Color? appBarBackgroundColor = Theme.of(
       context,
     ).appBarTheme.backgroundColor;
 
-    final String username = _userData?['username'] ?? "ไม่ทราบชื่อ";
-    final String email = _userData?['email'] ?? "ไม่ทราบอีเมล";
+    final String username = userData?['username'] ?? "ไม่ทราบชื่อ";
+    final String email = userData?['email'] ?? "ไม่ทราบอีเมล";
 
     return Scaffold(
       appBar: AppBar(

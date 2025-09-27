@@ -19,6 +19,7 @@ import 'app/notification_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'providers/user_provider.dart';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -56,7 +57,13 @@ void main() async {
   await initNotificationService();
 
   runApp(
-    ChangeNotifierProvider(create: (context) => themeProvider, child: MyApp()),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => themeProvider),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: const MyApp(),
+    ),
   );
 }
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../services/auth_service.dart';
 import '../services/achievement_service.dart';
 import '../models/achievement.dart';
+import '../providers/user_provider.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -11,7 +14,6 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
-  Map<String, dynamic>? _userData;
   List<Achievement> _achievements = [];
   bool _isLoading = true;
   String _errorMessage = '';
@@ -34,12 +36,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
     if (!mounted) return;
 
     if (result['success']) {
-      setState(() {
-        _userData = result['user'];
-      });
+      Provider.of<UserProvider>(
+        context,
+        listen: false,
+      ).setUserData(result['user']);
+      setState(() => _isLoading = false);
     } else {
       setState(() {
         _errorMessage = result['message'] ?? 'Failed to load user data';
+        _isLoading = false;
       });
     }
   }
@@ -47,9 +52,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _loadAchievements() async {
     // Initialize achievements if this is the first time
     await AchievementService.initializeUserAchievements();
-    
+
     final result = await AchievementService.getUserAchievements();
-    
+
     if (!mounted) return;
 
     if (result['success']) {
@@ -67,6 +72,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final userData = userProvider.userData;
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -93,8 +101,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
       );
     }
 
-    final String username = _userData?['username'] ?? "ไม่ทราบชื่อ";
-    final String email = _userData?['email'] ?? "ไม่ทราบอีเมล";
+    final String username = userData?['username'] ?? "ไม่ทราบชื่อ";
+    final String email = userData?['email'] ?? "ไม่ทราบอีเมล";
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -256,8 +264,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           itemBuilder: (context, index) {
                             final achievement = _achievements[index];
                             final bool isAchieved = achievement.achieved;
-                            final double progress = achievement.target > 0 
-                                ? (achievement.current / achievement.target).clamp(0.0, 1.0)
+                            final double progress = achievement.target > 0
+                                ? (achievement.current / achievement.target)
+                                      .clamp(0.0, 1.0)
                                 : 0.0;
 
                             return Card(
@@ -316,9 +325,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                       LinearProgressIndicator(
                                         value: progress,
                                         backgroundColor: Colors.grey[300],
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.teal[400]!
-                                        ),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.teal[400]!,
+                                            ),
                                       ),
                                     ] else ...[
                                       Text(

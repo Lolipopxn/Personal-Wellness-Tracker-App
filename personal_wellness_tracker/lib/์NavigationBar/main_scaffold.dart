@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../services/auth_service.dart';
+import '../providers/user_provider.dart';
 
 import 'package:personal_wellness_tracker/pages/dashboard.dart';
 import 'package:personal_wellness_tracker/pages/daily_page.dart';
@@ -16,7 +19,6 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int currentIndex = 0;
-  Map<String, dynamic>? _userData;
 
   @override
   void initState() {
@@ -26,14 +28,15 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   Future<void> _fetchUserData() async {
     final result = await AuthService.getCurrentUser();
-    if (mounted) {
-      setState(() {
-        if (result['success']) {
-          _userData = result['user'];
-        } else {
-          _userData = {};
-        }
-      });
+    if (!mounted) return;
+
+    if (result['success']) {
+      Provider.of<UserProvider>(
+        context,
+        listen: false,
+      ).setUserData(result['user']);
+    } else {
+      Provider.of<UserProvider>(context, listen: false).setUserData({});
     }
   }
 
@@ -51,10 +54,12 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ดึงชื่อจาก API (auth/me)
+    final userProvider = Provider.of<UserProvider>(context);
+    final userData = userProvider.userData;
+
     String displayName = 'User';
-    if (_userData != null && _userData!.isNotEmpty) {
-      displayName = _userData!['username'] ?? _userData!['email'] ?? 'User';
+    if (userData != null && userData.isNotEmpty) {
+      displayName = userData['username'] ?? userData['email'] ?? 'User';
     }
 
     final List<Widget> pages = [
@@ -67,7 +72,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       const DailyPage(),
       const FoodSavePage(),
-      // const StatisticsPage(),
       const ProgressScreen(),
       const UserProfilePage(),
     ];
