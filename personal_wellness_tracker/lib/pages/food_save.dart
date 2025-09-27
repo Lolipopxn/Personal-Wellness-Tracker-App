@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import '../services/nutrition_service.dart';
 import '../services/api_service.dart';
 import '../widgets/nutrition_chart.dart';
-import 'mock_api_manager_page.dart';
 
 class FoodSavePage extends StatefulWidget {
   const FoodSavePage({super.key});
@@ -868,18 +867,6 @@ class _FoodSavePageState extends State<FoodSavePage> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.blue, size: 24),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const MockApiManagerPage(),
-                ),
-              );
-            },
-            tooltip: 'จัดการ MockAPI',
-          ),
           IconButton(
             icon: const Icon(
               Icons.add_circle_outline,
