@@ -30,21 +30,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
-  final TextEditingController _goalWeightController = TextEditingController();
-  final TextEditingController _goalExerciseController = TextEditingController();
-  final TextEditingController _goalWaterController = TextEditingController();
-  final TextEditingController _goalExerciseMinutesController =
-      TextEditingController();
-  final TextEditingController _bpController = TextEditingController();
-  final TextEditingController _hrController = TextEditingController();
   TextEditingController? _otherProblemController;
 
   String? _selectedGender;
   int _currentStepIndex = 0;
-  final int _totalSteps = 4;
+  final int _totalSteps = 3;
   List<bool>? _healthProblemsChecked;
   bool _otherChecked = false;
-  String? _stepErrorMessage;
 
   final List<GlobalKey<FormState>> _formKeys = [
     GlobalKey<FormState>(),
@@ -95,45 +87,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           _selectedGender = currentUser['gender'];
           _weightController.text = currentUser['weight']?.toString() ?? '';
           _heightController.text = currentUser['height']?.toString() ?? '';
-          
-          // โหลดข้อมูลสุขภาพจาก users table (FastAPI structure)
-          if (currentUser['blood_pressure'] != null) {
-            _bpController.text = currentUser['blood_pressure'].toString();
-          }
-          if (currentUser['heart_rate'] != null) {
-            _hrController.text = currentUser['heart_rate'].toString();
-          }
-          
-          // โหลดข้อมูลเป้าหมายจาก user_goals table
-          if (userGoals != null) {
-            _goalWeightController.text = userGoals['goal_weight']?.toString() ?? '';
-            _goalExerciseController.text = userGoals['goal_exercise_frequency']?.toString() ?? '';
-            _goalExerciseMinutesController.text = userGoals['goal_exercise_minutes']?.toString() ?? '';
-            _goalWaterController.text = userGoals['goal_water_intake']?.toString() ?? '';
-            print("DEBUG: Loaded goals from user_goals table - Weight: ${_goalWeightController.text}, Exercise: ${_goalExerciseController.text}, Minutes: ${_goalExerciseMinutesController.text}, Water: ${_goalWaterController.text}");
-          } 
-          // Fallback: ถ้าไม่มีข้อมูลจาก user_goals table ให้ลองดึงจาก embedded goals ใน currentUser
-          else if (currentUser['goals'] != null) {
-            final goals = currentUser['goals'];
-            _goalWeightController.text = goals['goal_weight']?.toString() ?? goals['weight']?.toString() ?? '';
-            _goalExerciseController.text = goals['goal_exercise_frequency']?.toString() ?? goals['exerciseFrequency']?.toString() ?? '';
-            _goalExerciseMinutesController.text = goals['goal_exercise_minutes']?.toString() ?? goals['exerciseMinutes']?.toString() ?? '';
-            _goalWaterController.text = goals['goal_water_intake']?.toString() ?? goals['waterIntake']?.toString() ?? '';
-            print("DEBUG: Loaded goals from embedded goals - Weight: ${_goalWeightController.text}, Exercise: ${_goalExerciseController.text}, Minutes: ${_goalExerciseMinutesController.text}, Water: ${_goalWaterController.text}");
-          } else {
-            print("DEBUG: No user goals found from any source");
-          }
-          
-          // โหลดข้อมูลสุขภาพจาก user_preferences table (สำหรับข้อมูลเพิ่มเติม)
-          if (userPreferences != null) {
-            // ถ้า preferences มีข้อมูลสุขภาพที่ละเอียดกว่า ให้ใช้จาก preferences
-            if (userPreferences['bloodPressure'] != null && userPreferences['bloodPressure'].toString().isNotEmpty) {
-              _bpController.text = userPreferences['bloodPressure'].toString();
-            }
-            if (userPreferences['heartRate'] != null) {
-              _hrController.text = userPreferences['heartRate'].toString();
-            }
-          }
           
           // โหลดปัญหาสุขภาพ
           _loadHealthProblems(currentUser, userPreferences);
@@ -207,12 +160,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     _ageController.dispose();
     _weightController.dispose();
     _heightController.dispose();
-    _goalWeightController.dispose();
-    _goalExerciseController.dispose();
-    _goalWaterController.dispose();
-    _goalExerciseMinutesController.dispose();
-    _bpController.dispose();
-    _hrController.dispose();
     _otherProblemController?.dispose();
     super.dispose();
   }
@@ -258,34 +205,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         'gender': _selectedGender?.toLowerCase(), // แปลงเป็น lowercase
         'weight': double.tryParse(_weightController.text),
         'height': double.tryParse(_heightController.text),
-        'blood_pressure': _bpController.text.trim(),
-        'heart_rate': int.tryParse(_hrController.text),
         'health_problems': problemsList, // ส่งเป็น array สำหรับ PostgreSQL
         'profile_completed': true,
       };
       
       print("DEBUG: User profile data to send: $userProfileData"); // Debug line
 
-      // Update user goals (ข้อมูลเป้าหมาย - ไปที่ user_goals table แยกต่างหาก)
-      final userGoalsData = {
-        'goal_weight': double.tryParse(_goalWeightController.text),
-        'goal_exercise_frequency': int.tryParse(_goalExerciseController.text),
-        'goal_exercise_minutes': int.tryParse(_goalExerciseMinutesController.text),
-        'goal_water_intake': int.tryParse(_goalWaterController.text),
-      };
-      
-      print("DEBUG: User goals data to send: $userGoalsData"); // Debug line
-
       // Update health info
       final healthInfoData = {
         'healthProblems': problemsList,
-        'bloodPressure': _bpController.text.trim(),
-        'heartRate': int.tryParse(_hrController.text),
       };
       
       print("DEBUG: Health info data to send: $healthInfoData"); // Debug line
 
-      // ส่งข้อมูลไป 3 ที่แยกกัน:
+      // ส่งข้อมูลไป 2 ที่แยกกัน:
       // 1. อัปเดตข้อมูลพื้นฐานใน users table
       try {
         await _apiService.updateUserProfile(
@@ -298,29 +231,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         throw e; // Re-throw เพื่อให้ทำงานต่อไปยัง catch block ด้านนอก
       }
       
-      // 2. อัปเดตข้อมูลเป้าหมายใน user_goals table
-      try {
-        await _apiService.createUserGoals(
-          userId: userId,
-          goals: userGoalsData,
-        );
-        print("DEBUG: User goals created successfully");
-      } catch (e) {
-        // ถ้า create ไม่ได้ อาจเป็นเพราะมีอยู่แล้ว ลอง update
-        print("DEBUG: Goals create failed, trying update: $e");
-        try {
-          await _apiService.updateUserGoals(
-            userId: userId,
-            goals: userGoalsData,
-          );
-          print("DEBUG: User goals updated successfully");
-        } catch (updateError) {
-          print("DEBUG: Failed to update user goals: $updateError");
-          // ไม่ throw error เพราะไม่ใช่ข้อมูลสำคัญมาก
-        }
-      }
-      
-      // 3. อัปเดตข้อมูลสุขภาพใน user_preferences table
+      // 2. อัปเดตข้อมูลสุขภาพใน user_preferences table
       try {
         await _apiService.createUserPreferences(
           userId: userId,
@@ -513,14 +424,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
               child: Column(
                 children: [
-                  if (_stepErrorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        _stepErrorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 14),
-                      ),
-                    ),
                   Row(
                     children: [
                       Expanded(
@@ -531,7 +434,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               Navigator.of(context).pop(true); // ส่งค่า true เพื่อ refresh
                             } else if (_currentStepIndex > 0) {
                               setState(() {
-                                _stepErrorMessage = null;
                                 _currentStepIndex--;
                               });
                             }
@@ -557,9 +459,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         child: ElevatedButton(
                           onPressed: () {
                             bool valid = false;
-                            setState(() {
-                              _stepErrorMessage = null;
-                            });
                             switch (_currentStepIndex) {
                               case 0:
                                 valid = _validateStep1();
@@ -569,9 +468,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 break;
                               case 2:
                                 valid = _validateStep3();
-                                break;
-                              case 3:
-                                valid = _validateStep4();
                                 break;
                             }
                             if (!valid) return;
@@ -720,15 +616,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       case 0:
         return 'ข้อมูล\nพื้นฐาน';
       case 1:
-        return 'เป้า\nหมาย';
-      case 2:
         return 'ประเมิน\nสุขภาพ';
-      case 3:
+      case 2:
         return 'สรุป\nข้อมูล';
       default:
         return '';
     }
   }
+
+
 
   Widget _buildStepContent() {
     switch (_currentStepIndex) {
@@ -804,14 +700,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           ),
                         ],
                       ),
-                      if (_stepErrorMessage != null && _selectedGender == null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4, left: 8),
-                          child: Text(
-                            'กรุณาเลือกเพศ',
-                            style: TextStyle(color: Colors.red, fontSize: 13),
-                          ),
-                        ),
                       const SizedBox(height: 15),
                       _buildTextField(
                         'น้ำหนัก (กิโลกรัม)',
@@ -852,173 +740,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text(
-                'กรอกเป้าหมายของคุณ',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E5077),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Card(
-                elevation: 2,
-                color: Color(0xFFF6F4F0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 22,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.monitor_weight, color: Color(0xFF2E5077)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              'เป้าหมายน้ำหนัก (กิโลกรัม)',
-                              _goalWeightController,
-                              TextInputType.number,
-                              validator: (v) {
-                                if (v == null || v.isEmpty)
-                                  return 'กรุณากรอกเป้าหมายน้ำหนัก';
-                                if (double.tryParse(v) == null ||
-                                    double.parse(v) <= 0)
-                                  return 'น้ำหนักไม่ถูกต้อง';
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Icon(Icons.fitness_center, color: Color(0xFF2E5077)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              'การออกกำลังกาย (ครั้ง/สัปดาห์)',
-                              _goalExerciseController,
-                              TextInputType.number,
-                              validator: (v) {
-                                if (v == null || v.isEmpty)
-                                  return 'กรุณากรอกจำนวนครั้ง';
-                                if (int.tryParse(v) == null ||
-                                    int.parse(v) <= 0)
-                                  return 'จำนวนครั้งไม่ถูกต้อง';
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Icon(Icons.timer, color: Color(0xFF2E5077)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                int initial =
-                                    int.tryParse(
-                                      _goalExerciseMinutesController.text,
-                                    ) ??
-                                    30;
-                                final selected =
-                                    await _showCupertinoMinutesPicker(initial);
-                                if (selected != null) {
-                                  setState(() {
-                                    _goalExerciseMinutesController.text =
-                                        selected.toString();
-                                  });
-                                }
-                              },
-                              child: AbsorbPointer(
-                                child: _buildTextField(
-                                  'การออกกำลังกาย (นาที/วัน)',
-                                  _goalExerciseMinutesController,
-                                  TextInputType.number,
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty)
-                                      return 'กรุณากรอกนาที';
-                                    if (int.tryParse(v) == null ||
-                                        int.parse(v) <= 0)
-                                      return 'นาทีไม่ถูกต้อง';
-                                    return null;
-                                  },
-                                  enabled: false,
-                                  hintText:
-                                      _goalExerciseMinutesController
-                                          .text
-                                          .isNotEmpty
-                                      ? null
-                                      : 'แตะเพื่อเลือก',
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Icon(Icons.local_drink, color: Color(0xFF2E5077)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final selected = await _showWaterCupPicker();
-                                if (selected != null) {
-                                  setState(() {
-                                    _goalWaterController.text = selected
-                                        .toString();
-                                  });
-                                }
-                              },
-                              child: AbsorbPointer(
-                                child: _buildTextField(
-                                  'เป้าหมายการดื่มน้ำ (แก้ว/วัน)',
-                                  _goalWaterController,
-                                  TextInputType.number,
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty)
-                                      return 'กรุณากรอกจำนวนแก้ว';
-                                    if (int.tryParse(v) == null ||
-                                        int.parse(v) <= 0)
-                                      return 'จำนวนแก้วไม่ถูกต้อง';
-                                    return null;
-                                  },
-                                  enabled: false,
-                                  hintText: _goalWaterController.text.isNotEmpty
-                                      ? null
-                                      : 'แตะเพื่อเลือก',
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      case 2:
-        return Form(
-          key: _formKeys[2],
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
                 'ประเมินสุขภาพเบื้องต้น',
                 style: TextStyle(
                   fontSize: 20,
@@ -1042,57 +763,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.bloodtype, color: Color(0xFF2E5077)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              'ความดันโลหิต (mmHg)',
-                              _bpController,
-                              TextInputType.text,
-                              validator: (v) {
-                                if (v == null || v.isEmpty)
-                                  return 'กรุณากรอกความดันโลหิต';
-                                final regex = RegExp(r'^\d{2,3}/\d{2,3}$');
-                                if (!regex.hasMatch(v))
-                                  return 'กรุณากรอกในรูปแบบ 120/80';
-                                return null;
-                              },
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9/]'),
-                                ),
-                                LengthLimitingTextInputFormatter(7),
-                              ],
-                              hintText: 'เช่น 120/80',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Icon(Icons.favorite, color: Color(0xFF2E5077)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              'อัตราการเต้นหัวใจ (bpm)',
-                              _hrController,
-                              TextInputType.number,
-                              validator: (v) {
-                                if (v == null || v.isEmpty)
-                                  return 'กรุณากรอกอัตราการเต้นหัวใจ';
-                                if (int.tryParse(v) == null ||
-                                    int.parse(v) <= 0)
-                                  return 'ค่าต้องเป็นตัวเลข';
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -1112,9 +782,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ],
           ),
         );
-      case 3:
+      case 2:
         return Form(
-          key: _formKeys[3],
+          key: _formKeys[2],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -1250,129 +920,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                 ),
               
-              // Card สรุปเป้าหมาย
-              if (_goalWeightController.text.isNotEmpty || 
-                  _goalExerciseController.text.isNotEmpty || 
-                  _goalExerciseMinutesController.text.isNotEmpty || 
-                  _goalWaterController.text.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF79D7BE).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Color(0xFF79D7BE).withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.flag_outlined, color: Color(0xFF2E5077), size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'เป้าหมายที่ตั้งไว้',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Color(0xFF2E5077),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (_goalWeightController.text.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(Icons.monitor_weight, size: 16, color: Color(0xFF4DA1A9)),
-                              const SizedBox(width: 8),
-                              Text('น้ำหนักเป้าหมาย: ', style: TextStyle(
-                                color: Color(0xFF2E5077),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              )),
-                              Text('${_goalWeightController.text} กก.', 
-                                   style: const TextStyle(
-                                     fontWeight: FontWeight.w700,
-                                     fontSize: 15,
-                                     color: Color(0xFF2E5077),
-                                   )),
-                            ],
-                          ),
-                        ),
-                      if (_goalExerciseController.text.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(Icons.fitness_center, size: 16, color: Color(0xFF4DA1A9)),
-                              const SizedBox(width: 8),
-                              Text('ออกกำลังกาย: ', style: TextStyle(
-                                color: Color(0xFF2E5077),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              )),
-                              Text('${_goalExerciseController.text} ครั้ง/สัปดาห์', 
-                                   style: const TextStyle(
-                                     fontWeight: FontWeight.w700,
-                                     fontSize: 15,
-                                     color: Color(0xFF2E5077),
-                                   )),
-                            ],
-                          ),
-                        ),
-                      if (_goalExerciseMinutesController.text.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(Icons.timer, size: 16, color: Color(0xFF4DA1A9)),
-                              const SizedBox(width: 8),
-                              Text('ระยะเวลา: ', style: TextStyle(
-                                color: Color(0xFF2E5077),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              )),
-                              Text('${_goalExerciseMinutesController.text} นาที/วัน', 
-                                   style: const TextStyle(
-                                     fontWeight: FontWeight.w700,
-                                     fontSize: 15,
-                                     color: Color(0xFF2E5077),
-                                   )),
-                            ],
-                          ),
-                        ),
-                      if (_goalWaterController.text.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 0),
-                          child: Row(
-                            children: [
-                              Icon(Icons.local_drink, size: 16, color: Color(0xFF4DA1A9)),
-                              const SizedBox(width: 8),
-                              Text('ดื่มน้ำ: ', style: TextStyle(
-                                color: Color(0xFF2E5077),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              )),
-                              Text('${_goalWaterController.text} แก้ว/วัน', 
-                                   style: const TextStyle(
-                                     fontWeight: FontWeight.w700,
-                                     fontSize: 15,
-                                     color: Color(0xFF2E5077),
-                                   )),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              
               // Card สรุปข้อมูลสุขภาพ
-              if (_bpController.text.isNotEmpty || 
-                  _hrController.text.isNotEmpty || 
-                  (_healthProblemsChecked != null && _healthProblemsChecked!.any((checked) => checked)) ||
+              if ((_healthProblemsChecked != null && _healthProblemsChecked!.any((checked) => checked)) ||
                   _otherChecked)
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
@@ -1400,48 +949,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      if (_bpController.text.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(Icons.bloodtype, size: 16, color: Color(0xFF4DA1A9)),
-                              const SizedBox(width: 8),
-                              Text('ความดันโลหิต: ', style: TextStyle(
-                                color: Color(0xFF2E5077),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              )),
-                              Text('${_bpController.text} mmHg', 
-                                   style: const TextStyle(
-                                     fontWeight: FontWeight.w700,
-                                     fontSize: 15,
-                                     color: Color(0xFF2E5077),
-                                   )),
-                            ],
-                          ),
-                        ),
-                      if (_hrController.text.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(Icons.favorite, size: 16, color: Color(0xFF4DA1A9)),
-                              const SizedBox(width: 8),
-                              Text('อัตราการเต้นหัวใจ: ', style: TextStyle(
-                                color: Color(0xFF2E5077),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              )),
-                              Text('${_hrController.text} ครั้ง/นาที', 
-                                   style: const TextStyle(
-                                     fontWeight: FontWeight.w700,
-                                     fontSize: 15,
-                                     color: Color(0xFF2E5077),
-                                   )),
-                            ],
-                          ),
-                        ),
                       if (_healthProblemsChecked != null && _healthProblemsChecked!.any((checked) => checked))
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -1621,15 +1128,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final form = _formKeys[0].currentState;
     bool valid = form?.validate() ?? false;
     if (!valid) {
-      setState(() {
-        _stepErrorMessage = 'กรุณากรอกข้อมูลให้ครบถ้วน';
-      });
       return false;
     }
     if (_selectedGender == null) {
-      setState(() {
-        _stepErrorMessage = 'กรุณาเลือกเพศ';
-      });
       return false;
     }
     return true;
@@ -1639,27 +1140,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final form = _formKeys[1].currentState;
     bool valid = form?.validate() ?? false;
     if (!valid) {
-      setState(() {
-        _stepErrorMessage = 'กรุณากรอกข้อมูลเป้าหมายให้ครบถ้วน';
-      });
       return false;
     }
     return true;
   }
 
   bool _validateStep3() {
-    final form = _formKeys[2].currentState;
-    bool valid = form?.validate() ?? false;
-    if (!valid) {
-      setState(() {
-        _stepErrorMessage = 'กรุณากรอกข้อมูลสุขภาพให้ครบถ้วน';
-      });
-      return false;
-    }
-    return true;
-  }
-
-  bool _validateStep4() {
     // Stage สรุปข้อมูลไม่ต้อง validate อะไร
     return true;
   }
@@ -1863,117 +1349,5 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  // ฟังก์ชันสำหรับ picker เลือกนาทีออกกำลังกาย
-  Future<int?> _showCupertinoMinutesPicker(int initialValue) async {
-    int selectedMinutes = initialValue;
-    return showModalBottomSheet<int>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        height: 300,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('ยกเลิก'),
-                ),
-                const Text(
-                  'เลือกระยะเวลาออกกำลังกาย',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, selectedMinutes),
-                  child: const Text('เลือก'),
-                ),
-              ],
-            ),
-            const Divider(),
-            Expanded(
-              child: ListView.builder(
-                itemCount: 12, // 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180
-                itemBuilder: (context, index) {
-                  final minutes = (index + 1) * 15;
-                  return ListTile(
-                    title: Text('$minutes นาที'),
-                    trailing: selectedMinutes == minutes 
-                        ? const Icon(Icons.check, color: Color(0xFF2E5077)) 
-                        : null,
-                    onTap: () {
-                      selectedMinutes = minutes;
-                      Navigator.pop(context, selectedMinutes);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // ฟังก์ชันสำหรับ picker เลือกจำนวนแก้วน้ำ
-  Future<int?> _showWaterCupPicker() async {
-    int selectedCups = int.tryParse(_goalWaterController.text) ?? 8;
-    return showModalBottomSheet<int>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        height: 300,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('ยกเลิก'),
-                ),
-                const Text(
-                  'เลือกจำนวนแก้วน้ำต่อวัน',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, selectedCups),
-                  child: const Text('เลือก'),
-                ),
-              ],
-            ),
-            const Divider(),
-            Expanded(
-              child: ListView.builder(
-                itemCount: 15, // 1-15 แก้ว
-                itemBuilder: (context, index) {
-                  final cups = index + 1;
-                  return ListTile(
-                    leading: Icon(Icons.local_drink, color: Color(0xFF4DA1A9)),
-                    title: Text('$cups แก้ว'),
-                    subtitle: Text('≈ ${(cups * 250).toStringAsFixed(0)} มล.'),
-                    trailing: selectedCups == cups 
-                        ? const Icon(Icons.check, color: Color(0xFF2E5077)) 
-                        : null,
-                    onTap: () {
-                      selectedCups = cups;
-                      Navigator.pop(context, selectedCups);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

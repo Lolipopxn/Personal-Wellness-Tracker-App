@@ -53,12 +53,15 @@ def get_user_goal(db: Session, goal_id: str):
     return db.query(models.UserGoal).filter(models.UserGoal.id == goal_id).first()
 
 def create_user_goal(db: Session, goal: schemas.UserGoalCreate):
+    print(f"DEBUG CRUD: Received goal data: {goal.dict()}")
     goal_data = goal.dict()
     goal_data['id'] = str(uuid.uuid4())
+    print(f"DEBUG CRUD: Creating goal with data: {goal_data}")
     db_goal = models.UserGoal(**goal_data)
     db.add(db_goal)
     db.commit()
     db.refresh(db_goal)
+    print(f"DEBUG CRUD: Goal created successfully with id: {db_goal.id}")
     return db_goal
 
 def update_user_goal(db: Session, goal_id: str, goal_update: schemas.UserGoalUpdate):

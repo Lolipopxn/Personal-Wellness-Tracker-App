@@ -193,8 +193,13 @@ def create_user_goal(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user)
 ):
+    print(f"DEBUG ENDPOINT: Received user_id: {user_id}")
+    print(f"DEBUG ENDPOINT: Received goal data: {goal.dict()}")
     goal_data = schemas.UserGoalCreate(**goal.dict(), user_id=user_id)
-    return crud.create_user_goal(db=db, goal=goal_data)
+    print(f"DEBUG ENDPOINT: Created goal_data: {goal_data.dict()}")
+    result = crud.create_user_goal(db=db, goal=goal_data)
+    print(f"DEBUG ENDPOINT: Returning result: {result}")
+    return result
 
 @app.get("/users/{user_id}/goals/", response_model=List[schemas.UserGoal], tags=["User Goals"])
 def read_user_goals(

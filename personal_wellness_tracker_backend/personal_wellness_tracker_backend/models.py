@@ -41,7 +41,7 @@ class User(Base):
     
     uid = Column(String, primary_key=True)
     email = Column(String, nullable=False, unique=True)
-    password_hash = Column(String, nullable=False)  # เพิ่ม password hash field
+    password_hash = Column(String, nullable=False)
     username = Column(String)
     age = Column(Integer)
     gender = Column(Enum(GenderEnum))
@@ -50,8 +50,6 @@ class User(Base):
     profile_completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    blood_pressure = Column(String)
-    heart_rate = Column(Integer)
     health_problems = Column(ARRAY(String))
     saved_days_count = Column(Integer, default=0)
     day_streak = Column(Integer, default=0)
@@ -71,11 +69,13 @@ class UserGoal(Base):
     id = Column(String, primary_key=True)
     user_id = Column(String, ForeignKey("users.uid"), nullable=False)
     goal_weight = Column(Float)
-    goal_exercise_frequency = Column(Integer)
+    goal_exercise_frequency_week = Column(Integer)
     goal_exercise_minutes = Column(Integer)
     goal_water_intake = Column(Integer)
-    effective_date = Column(Date)
-    end_date = Column(Date)
+    goal_calorie_intake = Column(Integer)
+    goal_sleep_hours = Column(Float)
+    activity_level = Column(String)
+    goal_timeframe = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -89,6 +89,7 @@ class FoodLog(Base):
     id = Column(String, primary_key=True)
     user_id = Column(String, ForeignKey("users.uid"), nullable=False)
     date = Column(Date, nullable=False)
+    total_calories = Column(Integer, default=0)
     meal_count = Column(Integer, default=0)
     
     # Relationships
@@ -165,20 +166,6 @@ class Achievement(Base):
     
     # Relationships
     user = relationship("User", back_populates="achievements")
-
-class NutritionCache(Base):
-    __tablename__ = "nutrition_cache"
-    
-    id = Column(String, primary_key=True)
-    food_name = Column(String, nullable=False, unique=True)
-    calories = Column(Float)
-    protein = Column(Float)
-    carbs = Column(Float)
-    fat = Column(Float)
-    fiber = Column(Float)
-    sugar = Column(Float)
-    source = Column(String, default='mock_api')
-    created_at = Column(DateTime, default=func.now())
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"

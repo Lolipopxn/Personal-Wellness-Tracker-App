@@ -28,8 +28,6 @@ class UserBase(BaseModel):
     gender: Optional[GenderEnum] = None
     weight: Optional[float] = None
     height: Optional[float] = None
-    blood_pressure: Optional[str] = None
-    heart_rate: Optional[int] = None
     health_problems: Optional[List[str]] = None
 
 class UserCreate(UserBase):
@@ -41,8 +39,6 @@ class UserUpdate(BaseModel):
     gender: Optional[GenderEnum] = None
     weight: Optional[float] = None
     height: Optional[float] = None
-    blood_pressure: Optional[str] = None
-    heart_rate: Optional[int] = None
     health_problems: Optional[List[str]] = None
     profile_completed: Optional[bool] = None
 
@@ -61,11 +57,14 @@ class User(UserBase):
 # User Goals schemas
 class UserGoalBase(BaseModel):
     goal_weight: Optional[float] = None
-    goal_exercise_frequency: Optional[int] = None
+    goal_exercise_frequency_week: Optional[int] = None
     goal_exercise_minutes: Optional[int] = None
     goal_water_intake: Optional[int] = None
-    effective_date: Optional[date] = None
-    end_date: Optional[date] = None
+    goal_calorie_intake: Optional[int] = None
+    goal_sleep_hours: Optional[float] = None
+    activity_level: Optional[str] = None
+    goal_timeframe: Optional[str] = None
+    is_active: Optional[bool] = True
 
 class ChangePassword(BaseModel):
     current_password: str
@@ -75,12 +74,11 @@ class UserGoalCreate(UserGoalBase):
     user_id: str
 
 class UserGoalUpdate(UserGoalBase):
-    is_active: Optional[bool] = None
+    pass
 
 class UserGoal(UserGoalBase):
     id: str
     user_id: str
-    is_active: bool
     created_at: datetime
     updated_at: datetime
 
@@ -97,6 +95,7 @@ class FoodLogCreate(FoodLogBase):
 class FoodLog(FoodLogBase):
     id: str
     user_id: str
+    total_calories: int
     meal_count: int
 
     class Config:
@@ -148,27 +147,6 @@ class MealWithNutrition(Meal):
     fat: Optional[float] = None
     fiber: Optional[float] = None
     sugar: Optional[float] = None
-
-# Nutrition Cache schemas
-class NutritionCacheBase(BaseModel):
-    food_name: str
-    calories: Optional[float] = None
-    protein: Optional[float] = None
-    carbs: Optional[float] = None
-    fat: Optional[float] = None
-    fiber: Optional[float] = None
-    sugar: Optional[float] = None
-    source: str = 'mock_api'
-
-class NutritionCacheCreate(NutritionCacheBase):
-    pass
-
-class NutritionCache(NutritionCacheBase):
-    id: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 # Daily Task schemas
 class DailyTaskBase(BaseModel):
@@ -292,17 +270,7 @@ class UserPreference(UserPreferenceBase):
     class Config:
         from_attributes = True
 
-# Health Info schemas (สำหรับข้อมูลสุขภาพที่อาจจะเก็บใน preferences หรือใช้แยกต่างหาก)
-class HealthInfoBase(BaseModel):
-    health_problems: Optional[List[str]] = None
-    blood_pressure: Optional[str] = None
-    heart_rate: Optional[int] = None
 
-class HealthInfoCreate(HealthInfoBase):
-    user_id: str
-
-class HealthInfoUpdate(HealthInfoBase):
-    pass
 
 # App Statistics schemas
 class AppStatisticsBase(BaseModel):

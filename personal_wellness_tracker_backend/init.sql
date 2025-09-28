@@ -48,8 +48,6 @@ CREATE TABLE "users" (
   "profile_completed" boolean DEFAULT false,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now()),
-  "blood_pressure" varchar,
-  "heart_rate" integer,
   "health_problems" text[],
   "saved_days_count" integer DEFAULT 0,
   "day_streak" integer DEFAULT 0,
@@ -60,11 +58,13 @@ CREATE TABLE "user_goals" (
   "id" varchar PRIMARY KEY,
   "user_id" varchar NOT NULL,
   "goal_weight" double precision,
-  "goal_exercise_frequency" integer,
+  "goal_exercise_frequency_week" integer,
   "goal_exercise_minutes" integer,
   "goal_water_intake" integer,
-  "effective_date" date,
-  "end_date" date,
+  "goal_calorie_intake" integer,
+  "goal_sleep_hours" double precision,
+  "activity_level" varchar,
+  "goal_timeframe" varchar,
   "is_active" boolean DEFAULT true,
   "created_at" timestamp DEFAULT (now()),
   "updated_at" timestamp DEFAULT (now())
@@ -74,6 +74,7 @@ CREATE TABLE "food_logs" (
   "id" varchar PRIMARY KEY,
   "user_id" varchar NOT NULL,
   "date" date NOT NULL,
+  "total_calories" integer DEFAULT 0,
   "meal_count" integer DEFAULT 0
 );
 
@@ -153,8 +154,6 @@ CREATE TABLE "app_statistics" (
 CREATE UNIQUE INDEX ON "users" ("email");
 CREATE UNIQUE INDEX ON "users" ("uid");
 CREATE INDEX ON "user_goals" ("user_id");
-CREATE INDEX ON "user_goals" ("user_id", "is_active");
-CREATE INDEX ON "user_goals" ("user_id", "effective_date");
 CREATE UNIQUE INDEX ON "food_logs" ("user_id", "date");
 CREATE INDEX ON "food_logs" ("date");
 CREATE INDEX ON "meals" ("food_log_id");

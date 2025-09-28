@@ -141,26 +141,49 @@ class ApiService {
     required Map<String, dynamic> goals,
   }) async {
     try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('No authentication token found. Please login again.');
+      }
+      
       final headers = await getHeaders();
+      print('DEBUG API: Headers: $headers');
+      
+      final requestBody = {
+        'user_id': userId,
+        'goal_weight': goals['goal_weight'],
+        'goal_exercise_frequency_week': goals['goal_exercise_frequency_week'],
+        'goal_exercise_minutes': goals['goal_exercise_minutes'],
+        'goal_water_intake': goals['goal_water_intake'],
+        'goal_calorie_intake': goals['goal_calories'],
+        'goal_sleep_hours': goals['goal_sleep_hours'],
+        'activity_level': goals['activity_level'],
+        'goal_timeframe': goals['goal_timeframe'],
+        'is_active': true,
+      };
+      
+      print('DEBUG API: Sending to ${baseUrl}/users/$userId/goals/');
+      print('DEBUG API: Request body: ${jsonEncode(requestBody)}');
+      
       final response = await http.post(
         Uri.parse('$baseUrl/users/$userId/goals/'),
         headers: headers,
-        body: jsonEncode({
-          'user_id': userId,
-          'goal_weight': goals['goal_weight'],
-          'goal_exercise_frequency': goals['goal_exercise_frequency'],
-          'goal_exercise_minutes': goals['goal_exercise_minutes'],
-          'goal_water_intake': goals['goal_water_intake'],
-          'is_active': true,
-        }),
+        body: jsonEncode(requestBody),
       );
       
-      if (response.statusCode == 200) {
+      print('DEBUG API: Response status: ${response.statusCode}');
+      print('DEBUG API: Response body: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await logout();
+        throw Exception('Authentication expired. Please login again.');
       } else {
         throw Exception('Goals creation failed: ${response.body}');
       }
     } catch (e) {
+      print('DEBUG API: Error in createUserGoals: $e');
       throw Exception('Network error: $e');
     }
   }
@@ -197,18 +220,33 @@ class ApiService {
   // Get current user info
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
+      final token = await getToken();
+      print('DEBUG: Getting current user, token exists: ${token != null}');
+      
+      if (token == null) {
+        throw Exception('No authentication token found. Please login again.');
+      }
+      
       final headers = await getHeaders();
       final response = await http.get(
         Uri.parse('$baseUrl/auth/me'),
         headers: headers,
       );
       
+      print('DEBUG: getCurrentUser response status: ${response.statusCode}');
+      print('DEBUG: getCurrentUser response body: ${response.body}');
+      
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        // Token expired or invalid, clear it
+        await logout();
+        throw Exception('Authentication expired. Please login again.');
       } else {
         throw Exception('Failed to get user info: ${response.body}');
       }
     } catch (e) {
+      print('DEBUG: getCurrentUser error: $e');
       throw Exception('Network error: $e');
     }
   }
