@@ -834,4 +834,36 @@ class ApiService {
       return null; // Return null instead of throwing to handle gracefully
     }
   }
+
+  // Update food log statistics (total calories and meal count)
+  Future<Map<String, dynamic>> updateFoodLogStats({
+    required String foodLogId,
+    required int totalCalories,
+    required int mealCount,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/food-logs/$foodLogId/stats'),
+        headers: headers,
+        body: jsonEncode({
+          'total_calories': totalCalories,
+          'meal_count': mealCount,
+        }),
+      );
+      
+      print("DEBUG: Update food log stats response status: ${response.statusCode}");
+      print("DEBUG: Update food log stats response body: ${response.body}");
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Food log stats update failed: ${response.body}');
+      }
+    } catch (e) {
+      print("DEBUG: Error updating food log stats: $e");
+      throw Exception('Network error: $e');
+    }
+  }
 }

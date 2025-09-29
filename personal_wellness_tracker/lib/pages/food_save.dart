@@ -39,35 +39,48 @@ class _FoodSavePageState extends State<FoodSavePage> {
       final userId = currentUser['uid'] ?? currentUser['id'];
       
       // ดึง food log สำหรับวันที่เลือก
-      final foodLog = await _apiService.getFoodLogByDate(userId, selectedDate);
+      var foodLog = await _apiService.getFoodLogByDate(userId, selectedDate);
       
-      List<Map<String, dynamic>> fetchedMeals = [];
-      if (foodLog != null) {
-        _currentFoodLogId = foodLog['id'];
-        // ดึง meals จาก food log
-        final meals = await _apiService.getMealsByFoodLog(foodLog['id']);
-        fetchedMeals = meals.map<Map<String, dynamic>>((meal) => {
-          'id': meal['id'],
-          'name': meal['food_name'],
-          'type': _convertMealType(meal['meal_type']),
-          'cal': meal['calories'] ?? 0,
-          'desc': meal['description'] ?? meal['food_name'] ?? '',
-          'image_url': meal['image_url'],
-          // เพิ่มข้อมูลโภชนาการจากฐานข้อมูล
-          'has_nutrition_data': meal['has_nutrition_data'] ?? false,
-          'protein': meal['protein'],
-          'carbs': meal['carbs'],
-          'fat': meal['fat'],
-          'fiber': meal['fiber'],
-          'sugar': meal['sugar'],
-        }).toList();
+      // ถ้าไม่มี food log สำหรับวันนี้ ให้สร้างใหม่
+      if (foodLog == null) {
+        print('No food log found for ${selectedDate.toString()}, creating new one...');
+        foodLog = await _apiService.createFoodLog(
+          userId: userId,
+          date: selectedDate,
+        );
+        print('Created new food log with id: ${foodLog['id']}');
       }
+      
+      _currentFoodLogId = foodLog['id'];
+      
+      // ดึง meals จาก food log
+      List<Map<String, dynamic>> fetchedMeals = [];
+      final meals = await _apiService.getMealsByFoodLog(foodLog['id']);
+      fetchedMeals = meals.map<Map<String, dynamic>>((meal) => {
+        'id': meal['id'],
+        'name': meal['food_name'],
+        'type': _convertMealType(meal['meal_type']),
+        'cal': meal['calories'] ?? 0,
+        'desc': meal['description'] ?? meal['food_name'] ?? '',
+        'image_url': meal['image_url'],
+        // เพิ่มข้อมูลโภชนาการจากฐานข้อมูล
+        'has_nutrition_data': meal['has_nutrition_data'] ?? false,
+        'protein': meal['protein'],
+        'carbs': meal['carbs'],
+        'fat': meal['fat'],
+        'fiber': meal['fiber'],
+        'sugar': meal['sugar'],
+      }).toList();
       
       if (mounted) {
         setState(() {
           _mealsForSelectedDate = fetchedMeals;
         });
       }
+      
+      // อัปเดต total calories ใน food log (ทำหลังจาก setState เพื่อให้ meals มีค่าถูกต้อง)
+      await _updateFoodLogTotalCalories();
+      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -80,6 +93,34 @@ class _FoodSavePageState extends State<FoodSavePage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // เพิ่ม method สำหรับอัปเดต total calories ใน food log
+  Future<void> _updateFoodLogTotalCalories() async {
+    if (_currentFoodLogId == null) {
+      print('Cannot update food log stats: _currentFoodLogId is null');
+      return;
+    }
+    
+    try {
+      final totalCalories = meals.fold<int>(0, (sum, meal) => sum + ((meal['cal'] ?? 0) as int));
+      final mealCount = meals.length;
+      
+      print('Updating food log $_currentFoodLogId for date ${selectedDate.toString().split(' ')[0]}: Total calories = $totalCalories, Meal count = $mealCount');
+      
+      // เรียก API เพื่ออัปเดต food log stats (แม้ว่าจะมี 0 meals ก็ตาม)
+      await _apiService.updateFoodLogStats(
+        foodLogId: _currentFoodLogId!,
+        totalCalories: totalCalories,
+        mealCount: mealCount,
+      );
+      
+      print('Successfully updated food log stats for ${selectedDate.toString().split(' ')[0]}');
+      
+    } catch (e) {
+      print('Error updating food log stats: $e');
+      // ไม่แสดง error ให้ user เพราะเป็น background operation
     }
   }
 
@@ -113,34 +154,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
     }
   }
 
-  // สร้าง NutritionData จากข้อมูล meal - ให้ความสำคัญกับข้อมูลที่บันทึกไว้ก่อน
-  Future<NutritionData?> _createNutritionDataFromMeal(Map<String, dynamic> meal) async {
-    // ถ้ามีข้อมูลโภชนาการในฐานข้อมูลแล้ว ใช้ข้อมูลนั้น
-    if (meal['has_nutrition_data'] == true && 
-        meal['protein'] != null && 
-        meal['carbs'] != null && 
-        meal['fat'] != null) {
-      return NutritionData(
-        calories: (meal['cal'] ?? 0).toDouble(),
-        protein: (meal['protein'] ?? 0.0).toDouble(),
-        carbs: (meal['carbs'] ?? 0.0).toDouble(),
-        fat: (meal['fat'] ?? 0.0).toDouble(),
-        fiber: (meal['fiber'] ?? 0.0).toDouble(),
-        sugar: (meal['sugar'] ?? 0.0).toDouble(),
-      );
-    }
-    
-    // ถ้าไม่มีข้อมูลในฐานข้อมูล ให้ดึงจาก Mock API
-    try {
-      if (meal['name'] != null && meal['name'].toString().isNotEmpty) {
-        return await NutritionService.getNutritionData(meal['name']);
-      }
-    } catch (e) {
-      print('Error fetching nutrition data: $e');
-    }
-    
-    return null;
-  }
+
 
   Future<void> _deleteMeal(String mealId) async {
     final confirm = await showDialog<bool>(
@@ -165,13 +179,16 @@ class _FoodSavePageState extends State<FoodSavePage> {
     if (confirm ?? false) {
       try {
         await _apiService.deleteMeal(mealId);
+        
+        // อัปเดต UI และ total calories
+        await _loadFoodLogs();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ลบรายการอาหารสำเร็จ'),
             backgroundColor: Colors.green,
           ),
         );
-        _loadFoodLogs();
       } catch (e) {
         ScaffoldMessenger.of(
           context,
@@ -747,8 +764,9 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                         imageUrl: imageUrl,
                                       );
                                     } else {
-                                      // สร้าง food log ใหม่ถ้ายังไม่มี
+                                      // ตรวจสอบว่ามี food log แล้วหรือไม่ (ควรจะมีแล้วจาก _loadFoodLogs())
                                       if (_currentFoodLogId == null) {
+                                        print('Warning: _currentFoodLogId is null, creating food log...');
                                         final foodLog = await _apiService.createFoodLog(
                                           userId: userId,
                                           date: selectedDate,
@@ -776,7 +794,10 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                     
                                     if (context.mounted)
                                       Navigator.of(context).pop();
-                                    _loadFoodLogs();
+                                    
+                                    // รีโหลดข้อมูลและอัปเดต total calories
+                                    await _loadFoodLogs();
+                                    
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,

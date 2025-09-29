@@ -260,6 +260,35 @@ def read_food_log_by_date(
         raise HTTPException(status_code=404, detail="Food log not found")
     return db_food_log
 
+@app.put("/food-logs/{food_log_id}/stats", response_model=schemas.FoodLog, tags=["Food Logs"])
+def update_food_log_stats(
+    food_log_id: str,
+    stats_data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(deps.get_current_active_user)
+):
+    """Update food log statistics (total calories and meal count)"""
+    print(f"DEBUG: Updating food log {food_log_id} with stats: {stats_data}")
+    
+    # ตรวจสอบว่า food log มีอยู่จริง
+    db_food_log = db.query(models.FoodLog).filter(models.FoodLog.id == food_log_id).first()
+    if not db_food_log:
+        raise HTTPException(status_code=404, detail="Food log not found")
+    
+    # อัปเดต stats
+    if 'total_calories' in stats_data:
+        db_food_log.total_calories = stats_data['total_calories']
+    if 'meal_count' in stats_data:
+        db_food_log.meal_count = stats_data['meal_count']
+    
+    # บันทึกการเปลี่ยนแปลง
+    db.commit()
+    db.refresh(db_food_log)
+    
+    print(f"DEBUG: Successfully updated food log stats. Total calories: {db_food_log.total_calories}, Meal count: {db_food_log.meal_count}")
+    
+    return db_food_log
+
 # Meal endpoints
 @app.post("/meals/", response_model=schemas.Meal, tags=["Meals"])
 def create_meal(
