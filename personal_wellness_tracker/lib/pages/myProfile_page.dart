@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 import '../services/auth_service.dart';
 import '../services/achievement_service.dart';
@@ -50,7 +55,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _loadAchievements() async {
-    // Initialize achievements if this is the first time
     await AchievementService.initializeUserAchievements();
 
     final result = await AchievementService.getUserAchievements();
@@ -68,6 +72,152 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _isLoading = false;
       });
     }
+  }
+
+  /// ฟังก์ชันแชร์ achievement card
+  Future<void> _shareAchievementCard(
+    Achievement achievement,
+    GlobalKey cardKey,
+  ) async {
+    try {
+      // สร้าง ScreenshotController สำหรับ card นี้
+      final controller = ScreenshotController();
+
+      // จับภาพ card achievement
+      final Uint8List? image = await controller.captureFromWidget(
+        Material(
+          child: Container(
+            width: 350,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: _buildShareableAchievementCard(achievement),
+          ),
+        ),
+      );
+
+      if (image != null) {
+        // สร้างไฟล์ชั่วคราว
+        final directory = await getTemporaryDirectory();
+        final imagePath = '${directory.path}/achievement_${achievement.id}.png';
+        final imageFile = File(imagePath);
+        await imageFile.writeAsBytes(image);
+
+        // แชร์รูปภาพพร้อมข้อความ
+        final shareText =
+            '🏆 ฉันได้รับความสำเร็จ "${achievement.name}" แล้ว!\n\n${achievement.description}\n\n#PersonalWellnessTracker #Achievement #Wellness';
+
+        await Share.shareXFiles([XFile(imagePath)], text: shareText);
+      }
+    } catch (e) {
+      debugPrint('Error sharing achievement card: $e');
+      // แสดง error message ให้ผู้ใช้
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ไม่สามารถแชร์ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// สร้าง achievement card สำหรับแชร์
+  Widget _buildShareableAchievementCard(Achievement achievement) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Header
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF4DA1A9), Color(0xff2E5077)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.star, color: Colors.yellow[300], size: 40),
+              const SizedBox(height: 8),
+              const Text(
+                'ความสำเร็จ',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Achievement details
+        Text(
+          achievement.name,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xff2E5077),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          achievement.description,
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        // Achievement status
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.teal.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.teal, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, color: Colors.teal[600], size: 16),
+              const SizedBox(width: 4),
+              Text(
+                'สำเร็จแล้ว!',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.teal[600],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // App branding
+        Text(
+          'Personal Wellness Tracker',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[500],
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -342,16 +492,50 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                     ],
                                   ],
                                 ),
-                                trailing: isAchieved
-                                    ? Icon(
-                                        Icons.check_circle,
-                                        color: Colors.teal[600],
-                                      )
-                                    : const Icon(
-                                        Icons.lock,
-                                        size: 16,
-                                        color: Colors.grey,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // ปุ่มแชร์ - enable เมื่อ achievement สำเร็จแล้ว
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(20),
+                                        color: isAchieved
+                                            ? Colors.teal
+                                            : Colors.grey.shade300,
                                       ),
+                                      child: IconButton(
+                                        onPressed: isAchieved
+                                            ? () => _shareAchievementCard(
+                                                achievement,
+                                                GlobalKey(),
+                                              )
+                                            : null,
+                                        icon: Icon(
+                                          Icons.share,
+                                          color: isAchieved
+                                              ? Colors.white
+                                              : Colors.grey.shade500,
+                                          size: 20,
+                                        ),
+                                        tooltip: isAchieved
+                                            ? 'แชร์ความสำเร็จ'
+                                            : 'ยังไม่สำเร็จ ไม่สามารถแชร์ได้',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // ไอคอนสถานะ
+                                    isAchieved
+                                        ? Icon(
+                                            Icons.check_circle,
+                                            color: Colors.teal[600],
+                                          )
+                                        : const Icon(
+                                            Icons.lock,
+                                            size: 16,
+                                            color: Colors.grey,
+                                          ),
+                                  ],
+                                ),
                               ),
                             );
                           },

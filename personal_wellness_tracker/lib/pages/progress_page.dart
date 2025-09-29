@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import '../services/data_export_service.dart';
 
 class Palette {
   static const navy = Color(0xFF2E5077); // ข้อความ/ไอคอนหลัก
@@ -26,6 +27,7 @@ class ProgressScreen extends StatefulWidget {
 class _ProgressScreenState extends State<ProgressScreen> {
   int _doneCount = 0;
   final int _totalTasks = 5;
+  final DataExportService _exportService = DataExportService();
 
   Map<int, int> _weeklyWater = {};
   Map<int, int> _weeklyExercise = {};
@@ -401,6 +403,58 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
 
             const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final file = await _exportService.exportCSV();
+                      await _exportService.shareFile(
+                        file,
+                        text: "Wellness Data (CSV)",
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Export CSV failed: $e")),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.table_chart, color: Colors.white),
+                  label: const Text("Export CSV"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Palette.teal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final file = await _exportService.exportPDF();
+                      await _exportService.shareFile(
+                        file,
+                        text: "Wellness Report (PDF)",
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Export PDF failed: $e")),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                  label: const Text("Export PDF"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             _buildChartCard(
               title: 'การนอนหลับ (สัปดาห์นี้)',
               unit: 'ชม.',
@@ -698,7 +752,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  // ✅ Bar Chart capped
   Widget _buildBarChart(Map<int, int> data, Color color, double maxY) {
     List<BarChartGroupData> barGroups = [];
 

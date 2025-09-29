@@ -6,24 +6,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // ใช้ localhost สำหรับ web browser
-  // ใช้ 10.0.2.2 สำหรับ Android Emulator  
+  // ใช้ 10.0.2.2 สำหรับ Android Emulator
   // ใช้ IP address ของเครื่อง (เช่น 192.168.1.100) สำหรับ physical device
   static const String baseUrl = 'http://10.0.2.2:8000'; // Android Emulator
   // static const String baseUrl = 'http://localhost:8000'; // Web browser
   // static const String baseUrl = 'http://192.168.1.100:8000'; // Physical device
-  
+
   // Get stored token
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
-  
+
   // Save token
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', token);
   }
-  
+
   // Get headers with authorization
   Future<Map<String, String>> getHeaders() async {
     final token = await getToken();
@@ -36,7 +36,7 @@ class ApiService {
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
-  
+
   // Register user
   Future<Map<String, dynamic>> registerUser({
     required String email,
@@ -45,7 +45,7 @@ class ApiService {
   }) async {
     try {
       print('Registering user: $email, $username');
-      
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
@@ -55,10 +55,10 @@ class ApiService {
           'username': username,
         }),
       );
-      
+
       print('Register response status: ${response.statusCode}');
       print('Register response body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -69,7 +69,7 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-  
+
   // Login user
   Future<Map<String, dynamic>> loginUser({
     required String email,
@@ -79,12 +79,9 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await saveToken(data['access_token']);
@@ -99,7 +96,7 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-  
+
   // Create user profile
   Future<Map<String, dynamic>> createUserProfile({
     required String userId,
@@ -124,7 +121,7 @@ class ApiService {
           'profile_completed': profileData['profile_completed'] ?? true,
         }),
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -134,7 +131,7 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-  
+
   // Create user goals
   Future<Map<String, dynamic>> createUserGoals({
     required String userId,
@@ -145,10 +142,10 @@ class ApiService {
       if (token == null) {
         throw Exception('No authentication token found. Please login again.');
       }
-      
+
       final headers = await getHeaders();
       print('DEBUG API: Headers: $headers');
-      
+
       final requestBody = {
         'user_id': userId,
         'goal_weight': goals['goal_weight'],
@@ -159,21 +156,22 @@ class ApiService {
         'goal_sleep_hours': goals['goal_sleep_hours'],
         'activity_level': goals['activity_level'],
         'goal_timeframe': goals['goal_timeframe'],
-        'is_active': true, // Set first goal as active - user has one active goal only
+        'is_active':
+            true, // Set first goal as active - user has one active goal only
       };
-      
+
       print('DEBUG API: Sending to ${baseUrl}/users/$userId/goals/');
       print('DEBUG API: Request body: ${jsonEncode(requestBody)}');
-      
+
       final response = await http.post(
         Uri.parse('$baseUrl/users/$userId/goals/'),
         headers: headers,
         body: jsonEncode(requestBody),
       );
-      
+
       print('DEBUG API: Response status: ${response.statusCode}');
       print('DEBUG API: Response body: ${response.body}');
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -187,7 +185,7 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-  
+
   // Create user preferences (health info)
   Future<Map<String, dynamic>> createUserPreferences({
     required String userId,
@@ -206,7 +204,7 @@ class ApiService {
           'privacy_level': 'private',
         }),
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -216,26 +214,26 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-  
+
   // Get current user info
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
       final token = await getToken();
       print('DEBUG: Getting current user, token exists: ${token != null}');
-      
+
       if (token == null) {
         throw Exception('No authentication token found. Please login again.');
       }
-      
+
       final headers = await getHeaders();
       final response = await http.get(
         Uri.parse('$baseUrl/auth/me'),
         headers: headers,
       );
-      
+
       print('DEBUG: getCurrentUser response status: ${response.statusCode}');
       print('DEBUG: getCurrentUser response body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -250,7 +248,7 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-  
+
   // Logout
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -264,8 +262,9 @@ class ApiService {
   }) async {
     try {
       final headers = await getHeaders();
-      final String date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
-      
+      final String date =
+          "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+
       final response = await http.post(
         Uri.parse('$baseUrl/tasks/'),
         headers: headers,
@@ -279,7 +278,7 @@ class ApiService {
           'is_completed': true,
         }),
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -294,13 +293,14 @@ class ApiService {
   Future<Map<String, dynamic>?> getDailyTask(DateTime dateTime) async {
     try {
       final headers = await getHeaders();
-      final String date = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
-      
+      final String date =
+          "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+
       final response = await http.get(
         Uri.parse('$baseUrl/tasks/$date'),
         headers: headers,
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 404) {
@@ -320,7 +320,7 @@ class ApiService {
   }) async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.post(
         Uri.parse('$baseUrl/food-logs/'),
         headers: headers,
@@ -336,7 +336,7 @@ class ApiService {
           'notes': mealData['notes'] ?? '',
         }),
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -351,12 +351,12 @@ class ApiService {
   Future<List<Map<String, dynamic>>> getFoodLogsForDate(String date) async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/food-logs/$date'),
         headers: headers,
       );
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -375,7 +375,7 @@ class ApiService {
   }) async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.put(
         Uri.parse('$baseUrl/food-logs/$foodLogId'),
         headers: headers,
@@ -390,7 +390,7 @@ class ApiService {
           'notes': mealData['notes'] ?? '',
         }),
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -405,12 +405,12 @@ class ApiService {
   Future<void> deleteFoodLog(String foodLogId) async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.delete(
         Uri.parse('$baseUrl/food-logs/$foodLogId'),
         headers: headers,
       );
-      
+
       if (response.statusCode != 200) {
         throw Exception('Food log deletion failed: ${response.body}');
       }
@@ -423,12 +423,12 @@ class ApiService {
   Future<Map<String, dynamic>> fetchAllLogs() async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/logs/all'),
         headers: headers,
       );
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -443,12 +443,12 @@ class ApiService {
   Future<int> getSavedDaysCount() async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/stats/saved-days'),
         headers: headers,
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['count'] ?? 0;
@@ -464,12 +464,12 @@ class ApiService {
   Future<int> getStreakCount() async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/stats/streak'),
         headers: headers,
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['streak'] ?? 0;
@@ -511,18 +511,18 @@ class ApiService {
       if (token == null) {
         throw Exception('No authentication token found. Please login again.');
       }
-      
+
       // First, get the existing goal to obtain the goal_id
       final existingGoals = await getUserGoals(userId);
       if (existingGoals == null || existingGoals['id'] == null) {
         throw Exception('No existing goal found for user. Cannot update.');
       }
-      
+
       final goalId = existingGoals['id'].toString();
       final headers = await getHeaders();
       print('DEBUG API: Updating goal ID: $goalId for user: $userId');
       print('DEBUG API: Headers: $headers');
-      
+
       final requestBody = {
         'goal_weight': goals['goal_weight'],
         'goal_exercise_frequency_week': goals['goal_exercise_frequency_week'],
@@ -532,9 +532,10 @@ class ApiService {
         'goal_sleep_hours': goals['goal_sleep_hours'],
         'activity_level': goals['activity_level'],
         'goal_timeframe': goals['goal_timeframe'],
-        'is_active': true, // Always set to active - user has one active goal only
+        'is_active':
+            true, // Always set to active - user has one active goal only
       };
-      
+
       print('DEBUG API: Sending to ${baseUrl}/goals/$goalId');
       print('DEBUG API: Update request body: ${jsonEncode(requestBody)}');
 
@@ -543,7 +544,7 @@ class ApiService {
         headers: headers,
         body: jsonEncode(requestBody),
       );
-      
+
       print('DEBUG API: Update response status: ${response.statusCode}');
       print('DEBUG API: Update response body: ${response.body}');
 
@@ -582,9 +583,13 @@ class ApiService {
   }
 
   // Food Logs methods
-  Future<Map<String, dynamic>?> getFoodLogByDate(String userId, DateTime date) async {
+  Future<Map<String, dynamic>?> getFoodLogByDate(
+    String userId,
+    DateTime date,
+  ) async {
     final headers = await getHeaders();
-    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
     final response = await http.get(
       Uri.parse('$baseUrl/users/$userId/food-logs/$dateStr'),
@@ -605,14 +610,13 @@ class ApiService {
     required DateTime date,
   }) async {
     final headers = await getHeaders();
-    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
     final response = await http.post(
       Uri.parse('$baseUrl/users/$userId/food-logs/'),
       headers: headers,
-      body: jsonEncode({
-        'date': dateStr,
-      }),
+      body: jsonEncode({'date': dateStr}),
     );
 
     if (response.statusCode == 200) {
@@ -663,7 +667,8 @@ class ApiService {
         'food_log_id': foodLogId,
         'user_id': userId,
         'food_name': foodName,
-        if (description != null && description.isNotEmpty) 'description': description,
+        if (description != null && description.isNotEmpty)
+          'description': description,
         'meal_type': mealType,
         if (calories != null) 'calories': calories,
         if (protein != null) 'protein': protein,
@@ -704,7 +709,8 @@ class ApiService {
       headers: headers,
       body: jsonEncode({
         'food_name': foodName,
-        if (description != null && description.isNotEmpty) 'description': description,
+        if (description != null && description.isNotEmpty)
+          'description': description,
         'meal_type': mealType,
         if (calories != null) 'calories': calories,
         if (protein != null) 'protein': protein,
@@ -748,20 +754,21 @@ class ApiService {
       );
 
       request.headers.addAll(headers);
-      
+
       // ตรวจสอบไฟล์ก่อนอัปโหลด
       final file = File(imagePath);
       if (!await file.exists()) {
         throw Exception('File does not exist');
       }
-      
+
       final fileSize = await file.length();
       print('Uploading file: $imagePath, size: $fileSize bytes');
-      
-      if (fileSize > 5 * 1024 * 1024) { // 5MB
+
+      if (fileSize > 5 * 1024 * 1024) {
+        // 5MB
         throw Exception('File size must be less than 5MB');
       }
-      
+
       // ตรวจสอบและกำหนด content type ที่ถูกต้อง
       String? contentType;
       final extension = imagePath.toLowerCase().split('.').last;
@@ -779,12 +786,14 @@ class ApiService {
         default:
           throw Exception('Only JPEG, PNG, JPG, and WebP images are allowed');
       }
-      
-      request.files.add(await http.MultipartFile.fromPath(
-        'file', 
-        imagePath,
-        contentType: MediaType.parse(contentType),
-      ));
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          imagePath,
+          contentType: MediaType.parse(contentType),
+        ),
+      );
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -807,26 +816,27 @@ class ApiService {
   Future<Map<String, dynamic>?> getUserGoals(String userId) async {
     try {
       final headers = await getHeaders();
-      final url = '$baseUrl/users/$userId/goals/';  // เพิ่ม slash ท้าย
+      final url = '$baseUrl/users/$userId/goals/'; // เพิ่ม slash ท้าย
       print("DEBUG: Getting user goals from URL: $url");
-      
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
-      
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
       print("DEBUG: Get user goals response status: ${response.statusCode}");
       print("DEBUG: Get user goals response body: ${response.body}");
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         // Backend ส่งกลับมาเป็น List แต่เราต้องการ single object
         if (data is List && data.isNotEmpty) {
-          return Map<String, dynamic>.from(data.first);  // เอา item แรกและ cast เป็น Map<String, dynamic>
+          return Map<String, dynamic>.from(
+            data.first,
+          ); // เอา item แรกและ cast เป็น Map<String, dynamic>
         } else if (data is Map) {
-          return Map<String, dynamic>.from(data);  // ถ้าเป็น Map ให้ cast และส่งกลับ
+          return Map<String, dynamic>.from(
+            data,
+          ); // ถ้าเป็น Map ให้ cast และส่งกลับ
         } else {
-          return null;  // ถ้าไม่มีข้อมูล
+          return null; // ถ้าไม่มีข้อมูล
         }
       } else if (response.statusCode == 404) {
         // Goals not found, return null
@@ -844,17 +854,16 @@ class ApiService {
   Future<Map<String, dynamic>?> getUserPreferences(String userId) async {
     try {
       final headers = await getHeaders();
-      final url = '$baseUrl/users/$userId/preferences/';  // เพิ่ม slash ท้าย
+      final url = '$baseUrl/users/$userId/preferences/'; // เพิ่ม slash ท้าย
       print("DEBUG: Getting user preferences from URL: $url");
-      
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      print(
+        "DEBUG: Get user preferences response status: ${response.statusCode}",
       );
-      
-      print("DEBUG: Get user preferences response status: ${response.statusCode}");
       print("DEBUG: Get user preferences response body: ${response.body}");
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 404) {
@@ -877,7 +886,7 @@ class ApiService {
   }) async {
     try {
       final headers = await getHeaders();
-      
+
       final response = await http.put(
         Uri.parse('$baseUrl/food-logs/$foodLogId/stats'),
         headers: headers,
@@ -886,10 +895,12 @@ class ApiService {
           'meal_count': mealCount,
         }),
       );
-      
-      print("DEBUG: Update food log stats response status: ${response.statusCode}");
+
+      print(
+        "DEBUG: Update food log stats response status: ${response.statusCode}",
+      );
       print("DEBUG: Update food log stats response body: ${response.body}");
-      
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -898,6 +909,32 @@ class ApiService {
     } catch (e) {
       print("DEBUG: Error updating food log stats: $e");
       throw Exception('Network error: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getTasksByDate(DateTime date) async {
+    final headers = await getHeaders();
+    final dateStr =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/tasks/$dateStr'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      // response อาจเป็น list หรือ object หุ้ม list
+      final List<dynamic> tasks = decoded is List
+          ? decoded
+          : (decoded is Map && decoded['data'] is List ? decoded['data'] : []);
+
+      return tasks.whereType<Map<String, dynamic>>().toList();
+    } else if (response.statusCode == 404) {
+      return [];
+    } else {
+      throw Exception('Failed to get tasks by date: ${response.body}');
     }
   }
 }
