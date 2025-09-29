@@ -262,7 +262,7 @@ class DailyTaskApi {
 
         if (value['ended_at'] != null) {
           endedAt = DateTime.tryParse(value['ended_at'].toString());
-        } 
+        }
       } else {
         valueText = value is String ? value : null;
         valueNumber = value is num ? value.toDouble() : null;
@@ -392,7 +392,7 @@ class DailyTaskApi {
       }
       if (value['ended_at'] != null) {
         endedAt = DateTime.tryParse(value['ended_at'].toString());
-      } 
+      }
     } else {
       valueText = value is String ? value : null;
       valueNumber = value is num ? value.toDouble() : null;
