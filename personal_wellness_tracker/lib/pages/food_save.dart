@@ -20,14 +20,384 @@ class _FoodSavePageState extends State<FoodSavePage> {
   bool _isLoading = true;
   DateTime selectedDate = DateTime.now();
   String? _currentFoodLogId;
+  Map<String, dynamic>? _userGoals;
+  int _previousTotalCal = 0;
+  bool _hasShownGoalDialog = false; // เพิ่มตัวแปรเก็บสถานะการแสดง dialog
 
   List<Map<String, dynamic>> get meals => _mealsForSelectedDate;
   int get totalCal => meals.fold(0, (sum, m) => sum + ((m['cal'] ?? 0) as int));
+  int get goalCal => _userGoals?['goal_calorie_intake'] ?? 0;
 
   @override
   void initState() {
     super.initState();
+    _hasShownGoalDialog = false; // เริ่มต้นสถานะ dialog
     _loadFoodLogs();
+    _loadUserGoals();
+  }
+
+  Future<void> _loadUserGoals() async {
+    try {
+      final currentUser = await _apiService.getCurrentUser();
+      final userId = currentUser['uid'] ?? currentUser['id'];
+      
+      final goals = await _apiService.getUserGoals(userId);
+      if (mounted) {
+        setState(() {
+          _userGoals = goals;
+        });
+      }
+    } catch (e) {
+      print('DEBUG: Error fetching user goals: $e');
+      // ไม่แสดง error ให้ user เพราะไม่ใช่ function หลัก
+    }
+  }
+
+  void _checkCalorieGoal() {
+    if (_userGoals == null || goalCal <= 0) return;
+    
+    final currentCal = totalCal;
+    final goalCalories = goalCal;
+    final difference = currentCal - goalCalories;
+    
+    // แสดง dialog เฉพาะเมื่อเพิ่งถึงหรือเกิน goal และยังไม่เคยแสดง dialog ในวันนี้
+    if (!_hasShownGoalDialog && _previousTotalCal < goalCalories && currentCal >= goalCalories) {
+      _hasShownGoalDialog = true; // ตั้งค่าให้ไม่แสดงซ้ำ
+      
+      if (difference <= goalCalories * 0.1) {
+        // เกินไม่เกิน 10% = ยินดี
+        _showCongratulationsDialog(currentCal, goalCalories, difference);
+      } else {
+        // เกินมากกว่า 10% = เตือน
+        _showExcessCaloriesDialog(currentCal, goalCalories, difference);
+      }
+    }
+    
+    _previousTotalCal = currentCal;
+  }
+
+  void _showCongratulationsDialog(int currentCal, int goalCal, int difference) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.celebration,
+                color: const Color(0xFF79D7BE),
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'ยินดีด้วย! 🎉',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E5077),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF79D7BE).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF79D7BE).withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'คุณได้บรรลุเป้าหมายแคลอรี่แล้ว!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF2E5077),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'เป้าหมาย',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '$goalCal',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF79D7BE),
+                              ),
+                            ),
+                            Text(
+                              'kcal',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Icon(
+                          Icons.arrow_forward,
+                          color: Color(0xFF79D7BE),
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              'ปัจจุบัน',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '$currentCal',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF79D7BE),
+                              ),
+                            ),
+                            Text(
+                              'kcal',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (difference > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'เกินเป้าหมาย ${difference} kcal',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'ยินดีกับความสำเร็จของคุณ! ให้ดำเนินต่อไปแบบนี้เรื่อยๆ นะ 💪',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF79D7BE),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('ดีใจด้วย!'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showExcessCaloriesDialog(int currentCal, int goalCal, int difference) {
+    final percentageOver = ((difference / goalCal) * 100).round();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_rounded,
+                color: Colors.orange[600],
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'เกินเป้าหมาย!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E5077),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.orange[200]!,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'คุณได้รับแคลอรี่เกินเป้าหมายแล้ว',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF2E5077),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'เป้าหมาย',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '$goalCal',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF79D7BE),
+                              ),
+                            ),
+                            Text(
+                              'kcal',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Icon(
+                          Icons.trending_up,
+                          color: Colors.orange,
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              'ปัจจุบัน',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '$currentCal',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange[600],
+                              ),
+                            ),
+                            Text(
+                              'kcal',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'เกินเป้าหมาย ${difference} kcal ($percentageOver%)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.orange[800],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'แนะนำให้ลดปริมาณอาหารในมื้อถัดไป หรือเพิ่มการออกกำลังกายเพื่อเผาผลาญแคลอรี่ส่วนเกิน',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'เข้าใจแล้ว',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('จะระวัง'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _loadFoodLogs() async {
@@ -80,6 +450,9 @@ class _FoodSavePageState extends State<FoodSavePage> {
       
       // อัปเดต total calories ใน food log (ทำหลังจาก setState เพื่อให้ meals มีค่าถูกต้อง)
       await _updateFoodLogTotalCalories();
+
+      // ตรวจสอบเป้าหมายแคลอรี่
+      _checkCalorieGoal();
       
     } catch (e) {
       if (mounted) {
@@ -876,94 +1249,292 @@ class _FoodSavePageState extends State<FoodSavePage> {
     );
   }
 
+  Color _getCalorieColor() {
+    if (goalCal <= 0) return const Color(0xFF2E5077);
+    
+    final percentage = (totalCal / goalCal);
+    if (percentage < 0.8) {
+      return Colors.orange[600]!; // ต่ำกว่าเป้าหมาย
+    } else if (percentage <= 1.1) {
+      return const Color(0xFF79D7BE); // ใกล้เป้าหมาย
+    } else {
+      return Colors.red[600]!; // เกินเป้าหมายมาก
+    }
+  }
+
+  Widget _buildCalorieProgressBar() {
+    if (goalCal <= 0) return const SizedBox.shrink();
+    
+    final progress = (totalCal / goalCal).clamp(0.0, 1.5);
+    final percentage = ((totalCal / goalCal) * 100).round();
+    
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'ความคืบหน้า',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '$percentage%',
+              style: TextStyle(
+                fontSize: 12,
+                color: _getCalorieColor(),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Stack(
+          children: [
+            Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            FractionallySizedBox(
+              widthFactor: progress > 1.0 ? 1.0 : progress,
+              child: Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _getCalorieColor(),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            if (progress > 1.0)
+              Positioned(
+                right: 0,
+                child: Container(
+                  width: 20,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.red[400],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '0',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[500],
+              ),
+            ),
+            Text(
+              '${goalCal}',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Meal Logging',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(20), // ลดขนาดจาก 56 เป็น 50
+        child: AppBar(
+          backgroundColor: const Color(0xFF79D7BE),
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          toolbarHeight: 20, // กำหนดความสูงของ toolbar
         ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.add_circle_outline,
-              color: Colors.green,
-              size: 28,
-            ),
-            onPressed: () => _showMealDialog(),
-            tooltip: 'เพิ่มอาหาร',
-          ),
-        ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          // Header Section with Title and Add Button
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (picked != null && picked != selectedDate) {
-                      setState(() {
-                        selectedDate = picked;
-                      });
-                      _loadFoodLogs();
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
+                Icon(
+                  Icons.restaurant_menu,
+                  color: const Color(0xFF79D7BE),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'บันทึกอาหาร',
+                    style: TextStyle(
+                      color: Color(0xFF2E5077),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showMealDialog(),
+                  icon: const Icon(
+                    Icons.add,
+                    size: 20,
+                  ),
+                  label: const Text('เพิ่มอาหาร'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF79D7BE),
+                    foregroundColor: Colors.white,
+                    elevation: 2,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 16,
                       vertical: 8,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Row(
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null && picked != selectedDate) {
+                          setState(() {
+                            selectedDate = picked;
+                            _previousTotalCal = 0; // Reset previous total
+                            _hasShownGoalDialog = false; // Reset dialog status เมื่อเปลี่ยนวัน
+                          });
+                          _loadFoodLogs();
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF79D7BE).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF79D7BE)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today,
+                              size: 18,
+                              color: Color(0xFF79D7BE),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Color(0xFF2E5077),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Icon(
-                          Icons.calendar_today,
-                          size: 18,
-                          color: Colors.green,
+                        Row(
+                          children: [
+                            Text(
+                              'รวม ',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              '$totalCal',
+                              style: TextStyle(
+                                color: _getCalorieColor(),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
+                            Text(
+                              ' kcal',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.black,
+                        if (goalCal > 0) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                'เป้าหมาย ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              Text(
+                                '$goalCal kcal',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: const Color(0xFF79D7BE),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                  ),
+                  ],
                 ),
-                const Spacer(),
-                Text(
-                  'รวม ',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  '$totalCal',
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const Text(' cal', style: TextStyle(fontSize: 16)),
+                if (goalCal > 0) ...[
+                  const SizedBox(height: 12),
+                  _buildCalorieProgressBar(),
+                ],
               ],
             ),
           ),
