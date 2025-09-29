@@ -928,10 +928,6 @@ class _DashboardState extends State<Dashboard> {
                         label: "อัตราเต้นหัวใจ",
                         value: "${heartRate ?? 'N/A'} bpm",
                       ),
-                      _buildHealthMetricItem(
-                        label: "อาหาร",
-                        value: "2000 kcal",
-                      ),
                       _buildHealthMetricItem(label: "อารมณ์", value: mood),
                     ],
                   ),
@@ -1243,20 +1239,24 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
       print('DEBUG: Goal calories: ${targetCalories.round()}');
       print('DEBUG: =================');
 
-      // Save to API
-      final result = await widget.apiService.createUserGoals(
-        userId: userId,
-        goals: goalData,
-      );
-      
-      print('DEBUG: API response: $result');
+      // Save or update goals
+      final result = await _saveOrUpdateGoals(userId, goalData);
+      print('DEBUG: Final API response: $result');
 
       if (mounted) {
         Navigator.of(context).pop();
+        
+        // Use message from result or fallback to operation-based message
+        final operation = result['_operation'] ?? 'create';
+        final baseMessage = result['_message'] ?? 
+            (operation == 'update' ? 'อัปเดตเป้าหมายสำเร็จ' : 'บันทึกเป้าหมายสำเร็จ');
+        final successMessage = '$baseMessage! แคลอรี: ${targetCalories.round()} kcal/day';
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('บันทึกเป้าหมายสำเร็จ! แคลอรี: ${targetCalories.round()} kcal/day'),
+            content: Text(successMessage),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
         );
         widget.onGoalSaved();
@@ -1287,6 +1287,64 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _saveOrUpdateGoals(String userId, Map<String, dynamic> goalData) async {
+    try {
+      // Always check if user already has goals first
+      final existingGoals = await widget.apiService.getUserGoals(userId);
+      print('DEBUG: Existing goals check: $existingGoals');
+      
+      if (existingGoals != null && existingGoals.isNotEmpty) {
+        // User has existing goals - ALWAYS UPDATE (never create new)
+        print('DEBUG: User has existing goals - updating...');
+        print('DEBUG: Existing goal ID: ${existingGoals["id"] ?? "unknown"}');
+        final result = await widget.apiService.updateUserGoals(
+          userId: userId,
+          goals: goalData,
+        );
+        print('DEBUG: Goals updated successfully: $result');
+        result['_operation'] = 'update';
+        result['_message'] = 'อัปเดตเป้าหมายสำเร็จ';
+        return result;
+      } else {
+        // User doesn't have any goals - create first goal
+        print('DEBUG: User has no existing goals - creating first goal...');
+        final result = await widget.apiService.createUserGoals(
+          userId: userId,
+          goals: goalData,
+        );
+        print('DEBUG: First goal created successfully: $result');
+        result['_operation'] = 'create';
+        result['_message'] = 'สร้างเป้าหมายสำเร็จ';
+        return result;
+      }
+    } catch (e) {
+      print('DEBUG: Error in goal save/update process: $e');
+      
+      // Try to get more specific error information
+      if (e.toString().contains('404') || e.toString().contains('not found')) {
+        // Definitely no existing goals, create new
+        print('DEBUG: Confirmed no existing goals - creating new...');
+        try {
+          final result = await widget.apiService.createUserGoals(
+            userId: userId,
+            goals: goalData,
+          );
+          print('DEBUG: New goal created after 404: $result');
+          result['_operation'] = 'create';
+          result['_message'] = 'สร้างเป้าหมายสำเร็จ';
+          return result;
+        } catch (createError) {
+          print('DEBUG: Failed to create goal after 404: $createError');
+          rethrow;
+        }
+      } else {
+        // Other error, rethrow
+        print('DEBUG: Unknown error in goal process: $e');
+        rethrow;
       }
     }
   }

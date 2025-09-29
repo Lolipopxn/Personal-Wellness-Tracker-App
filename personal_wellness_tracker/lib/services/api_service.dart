@@ -159,7 +159,7 @@ class ApiService {
         'goal_sleep_hours': goals['goal_sleep_hours'],
         'activity_level': goals['activity_level'],
         'goal_timeframe': goals['goal_timeframe'],
-        'is_active': true,
+        'is_active': true, // Set first goal as active - user has one active goal only
       };
       
       print('DEBUG API: Sending to ${baseUrl}/users/$userId/goals/');
@@ -501,29 +501,63 @@ class ApiService {
     }
   }
 
-  // Update user goals
+  // Update user goals - uses PUT /goals/{goal_id} endpoint
   Future<Map<String, dynamic>> updateUserGoals({
     required String userId,
     required Map<String, dynamic> goals,
   }) async {
-    final headers = await getHeaders();
-
-    final response = await http.put(
-      Uri.parse('$baseUrl/users/$userId/goals/'),
-      headers: headers,
-      body: jsonEncode({
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('No authentication token found. Please login again.');
+      }
+      
+      // First, get the existing goal to obtain the goal_id
+      final existingGoals = await getUserGoals(userId);
+      if (existingGoals == null || existingGoals['id'] == null) {
+        throw Exception('No existing goal found for user. Cannot update.');
+      }
+      
+      final goalId = existingGoals['id'].toString();
+      final headers = await getHeaders();
+      print('DEBUG API: Updating goal ID: $goalId for user: $userId');
+      print('DEBUG API: Headers: $headers');
+      
+      final requestBody = {
         'goal_weight': goals['goal_weight'],
-        'goal_exercise_frequency': goals['goal_exercise_frequency'],
+        'goal_exercise_frequency_week': goals['goal_exercise_frequency_week'],
         'goal_exercise_minutes': goals['goal_exercise_minutes'],
         'goal_water_intake': goals['goal_water_intake'],
-        'is_active': true,
-      }),
-    );
+        'goal_calorie_intake': goals['goal_calories'],
+        'goal_sleep_hours': goals['goal_sleep_hours'],
+        'activity_level': goals['activity_level'],
+        'goal_timeframe': goals['goal_timeframe'],
+        'is_active': true, // Always set to active - user has one active goal only
+      };
+      
+      print('DEBUG API: Sending to ${baseUrl}/goals/$goalId');
+      print('DEBUG API: Update request body: ${jsonEncode(requestBody)}');
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to update user goals: ${response.body}');
+      final response = await http.put(
+        Uri.parse('$baseUrl/goals/$goalId'),
+        headers: headers,
+        body: jsonEncode(requestBody),
+      );
+      
+      print('DEBUG API: Update response status: ${response.statusCode}');
+      print('DEBUG API: Update response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await logout();
+        throw Exception('Authentication expired. Please login again.');
+      } else {
+        throw Exception('Goals update failed: ${response.body}');
+      }
+    } catch (e) {
+      print('DEBUG API: Error in updateUserGoals: $e');
+      throw Exception('Network error: $e');
     }
   }
 
