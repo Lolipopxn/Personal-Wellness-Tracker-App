@@ -13,9 +13,6 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   final ApiService _apiService = ApiService();
   Map<String, dynamic>? _userData;
-  Map<String, dynamic>? _exerciseData;
-  Map<String, dynamic>? _sleepData;
-  Map<String, dynamic>? _waterData;
   Map<String, dynamic>? _userGoals;
   bool _isLoading = true;
   String? _errorMessage;
@@ -23,6 +20,26 @@ class _DashboardState extends State<Dashboard> {
   int totalDays = 7;
   String mood = "N/A";
   bool _hasShownGoalPopup = false;
+
+  // --- Added: today’s task stats ---
+  int _waterToday = 0;            // glasses
+  double _sleepHoursToday = 0.0;  // hours
+  int _exerciseMinutesToday = 0;  // minutes
+
+  // --- Added: goal values ---
+  int? _goalWaterIntake;                 // glasses/day
+  double? _goalSleepHours;               // hours/day
+  int? _goalExerciseMinutesPerDay;       // minutes/day
+  int? _goalExerciseFrequencyWeek;       // times/week (info)
+  int? _goalCaloriesPerDay;              // kcal/day (info)
+
+  // --- Added: palette ---
+  static const Color kPrimary = Color(0xFF2E5077);
+  static const Color kTeal = Color(0xFF4DA1A9);
+  static const Color kMint = Color(0xFF79D7BE);
+  static const Color kWhite = Color(0xFFFFFFFF);
+
+  bool get _hasActiveGoals => _userGoals != null && (_userGoals!['is_active'] == true);
 
   @override
   void initState() {
@@ -107,6 +124,34 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  // Map goal timeframe string to days
+  int? _daysFromGoalTimeframe(String? tf) {
+    if (tf == null) return null;
+    switch (tf.trim()) {
+      case '1 สัปดาห์':
+      case '1 สัปดาห์ ':
+      case '1 week':
+        return 7;
+      case '2 สัปดาห์':
+      case '2 weeks':
+        return 14;
+      case '1 เดือน':
+      case '1 month':
+        return 30;
+      case '2 เดือน':
+      case '2 months':
+        return 60;
+      case '3 เดือน':
+      case '3 months':
+        return 90;
+      case '6 เดือน':
+      case '6 months':
+        return 180;
+      default:
+        return null;
+    }
+  }
+
   // ตรวจสอบและดึงข้อมูลเป้าหมายของผู้ใช้
   Future<void> _fetchUserGoals() async {
     try {
@@ -120,6 +165,20 @@ class _DashboardState extends State<Dashboard> {
         if (mounted) {
           setState(() {
             _userGoals = goals;
+
+            // --- Added: extract goal values safely ---
+            _goalWaterIntake = (goals?['goal_water_intake'] as num?)?.toInt();
+            _goalSleepHours = (goals?['goal_sleep_hours'] as num?)?.toDouble();
+            _goalExerciseMinutesPerDay = (goals?['goal_exercise_minutes'] as num?)?.toInt();
+            _goalExerciseFrequencyWeek = (goals?['goal_exercise_frequency_week'] as num?)?.toInt();
+            _goalCaloriesPerDay = (goals?['goal_calories'] as num?)?.toInt() 
+                                  ?? (goals?['goal_calorie_intake'] as num?)?.toInt();
+
+            // --- New: drive totalDays from goal timeframe when present ---
+            final tfDays = _daysFromGoalTimeframe(goals?['goal_timeframe']?.toString());
+            if (tfDays != null) {
+              totalDays = tfDays;
+            }
           });
           
           // ตรวจสอบว่าต้องแสดง popup หรือไม่
@@ -312,6 +371,14 @@ class _DashboardState extends State<Dashboard> {
   }
 
   void updateGoal(int days) {
+    // Prefer the user's active goal timeframe if available
+    final tfDays = _daysFromGoalTimeframe(_userGoals?['goal_timeframe']?.toString());
+    if (tfDays != null) {
+      totalDays = tfDays;
+      return;
+    }
+
+    // Fallback: previous threshold logic
     List<int> goals = [7, 14, 30, 60, 90, 180, 365];
     for (int g in goals) {
       if (days < g) {
@@ -342,7 +409,6 @@ class _DashboardState extends State<Dashboard> {
         print("DEBUG: Tasks list received: $tasks");
 
         setState(() {
-          
           // Parse tasks data
           _parseTasksData(tasks);
         });
@@ -435,52 +501,9 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  String evaluateHealth({
-    required double? weight,
-    required double? height,
-    required String bloodPressure,
-    required int? heartRate,
-    required String mood,
-    bool exerciseCompleted = false,
-    bool waterCompleted = false,
-  }) {
-    String bmiResult = _calculateBmi(weight, height);
-    bool isNormalBmi = bmiResult.contains("ปกติ");
 
-    bool isNormalBP = false;
-    if (bloodPressure != "N/A") {
-      try {
-        final parts = bloodPressure.split("/");
-        int systolic = int.parse(parts[0]);
-        int diastolic = int.parse(parts[1]);
-        isNormalBP =
-            (systolic >= 90 && systolic <= 120) &&
-            (diastolic >= 60 && diastolic <= 80);
-      } catch (_) {}
-    }
-
-    bool isNormalHR = heartRate != null && heartRate >= 60 && heartRate <= 100;
-
-    bool isGoodMood = mood != "N/A" && mood.toLowerCase().contains("happy");
-
-    int score = 0;
-    if (isNormalBmi) score++;
-    if (isNormalBP) score++;
-    if (isNormalHR) score++;
-    if (isGoodMood) score++;
-    if (exerciseCompleted) score++;
-    if (waterCompleted) score++;
-    if (score >= 4) {
-      return "สุขภาพดี";
-    } else if (score >= 2) {
-      return "ปานกลาง";
-    } else {
-      return "ควรปรับปรุง";
-    }
-  }
-
+  // --- Modified: parse tasks to today’s values ---
   void _parseTasksData(List<Map<String, dynamic>> tasks) {
-    // หาข้อมูลแต่ละประเภท task
     Map<String, dynamic>? exerciseTask;
     Map<String, dynamic>? waterTask;
     Map<String, dynamic>? sleepTask;
@@ -504,69 +527,40 @@ class _DashboardState extends State<Dashboard> {
       }
     }
 
-    // อัปเดตข้อมูล exercise
+    // exercise minutes (prefer value_number)
     if (exerciseTask != null) {
-      _exerciseData = {
-        "type": exerciseTask['value_text'] ?? 'การออกกำลังกาย',
-        "duration": exerciseTask['value_number'] != null 
-            ? "${exerciseTask['value_number'].toInt()} นาที" 
-            : '-',
-        "calories": "-", // อาจจะคำนวณจาก duration หรือเก็บแยก
-        "isTaskCompleted": exerciseTask['completed'] == true,
-      };
+      final vNum = exerciseTask['value_number'];
+      final vText = exerciseTask['value_text'];
+      _exerciseMinutesToday = vNum is num
+          ? vNum.round()
+          : (vText is String ? int.tryParse(vText) ?? 0 : 0);
     } else {
-      _exerciseData = {
-        "type": "-",
-        "duration": "-",
-        "calories": "-",
-        "isTaskCompleted": false,
-      };
+      _exerciseMinutesToday = 0;
     }
 
-    // อัปเดตข้อมูล water
+    // water glasses
     if (waterTask != null) {
-      _waterData = {
-        "glasses": waterTask['value_number']?.toInt() ?? 0,
-        "isTaskCompleted": waterTask['completed'] == true,
-      };
+      final vNum = waterTask['value_number'];
+      final vText = waterTask['value_text'];
+      _waterToday = vNum is num
+          ? vNum.round()
+          : (vText is String ? int.tryParse(vText) ?? 0 : 0);
     } else {
-      _waterData = {
-        "glasses": 0,
-        "isTaskCompleted": false,
-      };
+      _waterToday = 0;
     }
 
-    // อัปเดตข้อมูล sleep
+    // sleep hours
     if (sleepTask != null) {
-      final startedAt = sleepTask['started_at'] != null 
-          ? DateTime.tryParse(sleepTask['started_at']) 
-          : null;
-      final endedAt = sleepTask['ended_at'] != null 
-          ? DateTime.tryParse(sleepTask['ended_at']) 
-          : null;
-      
-      _sleepData = {
-        "sleepTime": startedAt != null 
-            ? "${startedAt.hour.toString().padLeft(2, '0')}:${startedAt.minute.toString().padLeft(2, '0')}" 
-            : '-',
-        "wakeTime": endedAt != null 
-            ? "${endedAt.hour.toString().padLeft(2, '0')}:${endedAt.minute.toString().padLeft(2, '0')}" 
-            : '-',
-        "sleepQuality": sleepTask['task_quality'] ?? '-',
-        "sleepHours": sleepTask['value_number']?.toStringAsFixed(1) ?? '-',
-        "isTaskCompleted": sleepTask['completed'] == true,
-      };
+      final vNum = sleepTask['value_number'];
+      final vText = sleepTask['task_quality'];
+      _sleepHoursToday = vNum is num
+          ? vNum.toDouble()
+          : (vText is String ? double.tryParse(vText) ?? 0.0 : 0.0);
     } else {
-      _sleepData = {
-        "sleepTime": "-",
-        "wakeTime": "-",
-        "sleepQuality": "-",
-        "sleepHours": "-",
-        "isTaskCompleted": false,
-      };
+      _sleepHoursToday = 0.0;
     }
 
-    // อัปเดตข้อมูล mood
+    // mood text
     if (moodTask != null) {
       mood = moodTask['value_text'] ?? 'N/A';
     } else {
@@ -574,266 +568,445 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  // --- Modified: reset today’s values to defaults ---
   void _setDefaultTaskData() {
     mood = 'N/A';
-    _exerciseData = {
-      "type": "-",
-      "duration": "-",
-      "calories": "-",
-      "isTaskCompleted": false,
-    };
-    _sleepData = {
-      "sleepTime": "-",
-      "wakeTime": "-",
-      "sleepQuality": "-",
-      "sleepHours": "-",
-      "isTaskCompleted": false,
-    };
-    _waterData = {
-      "glasses": 0,
-      "isTaskCompleted": false,
-    };
+    _waterToday = 0;
+    _sleepHoursToday = 0.0;
+    _exerciseMinutesToday = 0;
   }
 
-  Widget _buildDailyTaskItem({
-  required IconData icon,
-  required String label,
-  required VoidCallback onTap,
-  required bool isTablet,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF79D7BE), // main color
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF79D7BE).withOpacity(0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+  // --- Updated: progress row styling to match palette ---
+  Widget _buildProgressRow({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String currentLabel,
+    required double current,
+    required double goal,
+    bool isTablet = false,
+  }) {
+    final clampedGoal = goal <= 0 ? 1.0 : goal;
+    final progress = (current / clampedGoal).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: kWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kMint.withOpacity(0.25), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: kMint.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row similar to _buildStatCard
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+            ],
+          ),
+
+          // Small gap then actual title/value row
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.only(left: 5), // align with text after icon box (10+20+12+padding)
+            child: Row(
+              spacing: 12,
+              children: [
+                Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: isTablet ? 22 : 20),
+              ),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: kPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Text(
+                  currentLabel,
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w800,
+                    color: kPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 10,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Added: gradient header with streak progress ---
+  Widget _buildHeaderCard({
+    required bool isTablet,
+    required String name,
+    required double streakProgress,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 24 : 18,
+        vertical: isTablet ? 24 : 18,
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [kTeal, kMint],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: kMint.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'สวัสดี, $name',
+            style: TextStyle(
+              color: kWhite,
+              fontSize: isTablet ? 26 : 22,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'ติดตามสุขภาพของคุณทุกวัน',
+            style: TextStyle(
+              color: kWhite.withOpacity(0.9),
+              fontSize: isTablet ? 18 : 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: streakProgress.clamp(0, 1),
+                    minHeight: 10,
+                    backgroundColor: kWhite.withOpacity(0.3),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(kWhite),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$savedDays/$totalDays วัน',
+                style: const TextStyle(
+                  color: kWhite,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
-          child: Icon(icon, size: isTablet ? 52 : 42, color: Colors.white),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: isTablet ? 16 : 14,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF2E5077), // dark text
+        ],
+      ),
+    );
+  }
+
+  // --- Added: small stat card ---
+  Widget _buildStatCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String value,
+    String? subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: kWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kMint.withOpacity(0.25), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: kMint.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 12, color: kPrimary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w800, color: kPrimary)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildHealthMetricItem({
-  required String label,
-  required String value,
-}) {
-  return Container(
-    width: 150,
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 6,
-          offset: const Offset(0, 3),
-        )
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  // --- Added: stats grid section ---
+  Widget _buildStatsGrid({
+    required String bmiText,
+    required String bloodPressure,
+    bool isTablet = false,
+  }) {
+    return GridView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isTablet ? 2 : 1,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: isTablet ? 3.3 : 3.2,
+      ),
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF2E5077))),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF79D7BE)),
+        _buildStatCard(
+          icon: Icons.monitor_weight,
+          color: kMint,
+          title: 'BMI',
+          value: bmiText,
+          subtitle: 'ดัชนีมวลกาย',
         ),
-      ],
-    ),
-  );
-}
-
-  Widget _buildTaskInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionCard(
-          title: "ข้อมูลการออกกำลังกาย",
-          children: [
-            _buildInfoRow(
-              Icons.fitness_center,
-              "ประเภท",
-              _exerciseData?["type"] ?? '-',
-            ),
-            _buildInfoRow(
-              Icons.timer,
-              "ระยะเวลา",
-              _exerciseData?["duration"] ?? '-',
-            ),
-            _buildInfoRow(
-              _exerciseData?["isTaskCompleted"] == true
-                  ? Icons.check_circle
-                  : Icons.cancel,
-              "เสร็จสิ้น",
-              _exerciseData?["isTaskCompleted"] == true
-                  ? "สำเร็จแล้ว"
-                  : "ยังไม่เสร็จ",
-              color: _exerciseData?["isTaskCompleted"] == true
-                  ? Colors.green
-                  : Colors.red,
-            ),
-          ],
-        ),
-        _buildSectionCard(
-          title: "ข้อมูลการดื่มน้ำ",
-          children: [
-            _buildInfoRow(
-              Icons.local_drink,
-              "จำนวนแก้ว",
-              "${_waterData?["glasses"] ?? 0} แก้ว",
-            ),
-            _buildInfoRow(
-              _waterData?["isTaskCompleted"] == true
-                  ? Icons.check_circle
-                  : Icons.cancel,
-              "เสร็จสิ้น",
-              _waterData?["isTaskCompleted"] == true
-                  ? "สำเร็จแล้ว"
-                  : "ยังไม่เสร็จ",
-              color: _waterData?["isTaskCompleted"] == true
-                  ? Colors.green
-                  : Colors.red,
-            ),
-          ],
-        ),
-        _buildSectionCard(
-          title: "ข้อมูลการนอน",
-          children: [
-            _buildInfoRow(
-              Icons.bedtime,
-              "เริ่มนอน",
-              _sleepData?["sleepTime"] ?? '-',
-            ),
-            _buildInfoRow(
-              Icons.wb_sunny,
-              "ตื่นนอน",
-              _sleepData?["wakeTime"] ?? '-',
-            ),
-            _buildInfoRow(
-              Icons.access_time,
-              "ชั่วโมงการนอน",
-              _sleepData?["sleepHours"] != null && _sleepData!["sleepHours"] != '-'
-                  ? "${_sleepData!["sleepHours"]} ชั่วโมง"
-                  : '-',
-            ),
-            _buildInfoRow(
-              Icons.star,
-              "คุณภาพ",
-              _sleepData?["sleepQuality"] ?? '-',
-            ),
-            _buildInfoRow(
-              _sleepData?["isTaskCompleted"] == true
-                  ? Icons.check_circle
-                  : Icons.cancel,
-              "เสร็จสิ้น",
-              _sleepData?["isTaskCompleted"] == true
-                  ? "สำเร็จแล้ว"
-                  : "ยังไม่เสร็จ",
-              color: _sleepData?["isTaskCompleted"] == true
-                  ? Colors.green
-                  : Colors.red,
-            ),
-          ],
+        _buildStatCard(
+          icon: Icons.local_fire_department,
+          color: kTeal,
+          title: 'แคลอรี่เป้าหมาย',
+          value: _goalCaloriesPerDay?.toString() ?? '-',
+          subtitle: 'kcal/วัน',
         ),
       ],
     );
   }
 
-  /// --- Helper Widgets ---
- Widget _buildSectionCard({
-  required String title,
-  required List<Widget> children,
-}) {
-  return Card(
-    margin: const EdgeInsets.symmetric(vertical: 10),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    color: Colors.white, // เน้นความสะอาดตา
-    elevation: 6,
-    shadowColor: Colors.black26,
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E5077), // สีหัวข้อเข้ม
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    ),
-  );
-}
+  // --- Reused: goal vs today section (title styled) ---
+  Widget _buildGoalVsTodaySection(bool isTablet) {
+    final showGoalHint = !_hasActiveGoals ||
+        (_goalWaterIntake == null &&
+            _goalSleepHours == null &&
+            _goalExerciseMinutesPerDay == null);
 
-  Widget _buildInfoRow(
-    IconData icon,
-    String label,
-    String value, {
-    Color? color,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.blueAccent.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 22, color: color ?? Colors.blueAccent),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            "$label: ",
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: Colors.black87,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
+    final tiles = <Widget>[];
+
+    if (_goalWaterIntake != null) {
+      tiles.add(_buildProgressRow(
+        icon: Icons.water_drop,
+        color: Colors.blue,
+        title: 'ดื่มน้ำ',
+        currentLabel: '$_waterToday / ${_goalWaterIntake} แก้ว',
+        current: _waterToday.toDouble(),
+        goal: _goalWaterIntake!.toDouble(),
+        isTablet: isTablet,
+      ));
+    }
+    if (_goalSleepHours != null) {
+      tiles.add(_buildProgressRow(
+        icon: Icons.bedtime,
+        color: Colors.indigo,
+        title: 'การนอน',
+        currentLabel:
+            '${_sleepHoursToday.toStringAsFixed(1)} / ${_goalSleepHours!.toStringAsFixed(1)} ชม.',
+        current: _sleepHoursToday,
+        goal: _goalSleepHours!,
+        isTablet: isTablet,
+      ));
+    }
+    if (_goalExerciseMinutesPerDay != null) {
+      tiles.add(_buildProgressRow(
+        icon: Icons.fitness_center,
+        color: kMint,
+        title: 'ออกกำลังกาย',
+        currentLabel: '$_exerciseMinutesToday / ${_goalExerciseMinutesPerDay} นาที',
+        current: _exerciseMinutesToday.toDouble(),
+        goal: _goalExerciseMinutesPerDay!.toDouble(),
+        isTablet: isTablet,
+      ));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.flag, color: kMint),
+            SizedBox(width: 8),
+            Text(
+              'ความก้าวหน้าวันนี้เทียบกับเป้าหมาย',
               style: TextStyle(
-                color: color ?? Colors.black87,
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: kPrimary,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (showGoalHint)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'ยังไม่ได้ตั้งเป้าหมาย หรือไม่มีข้อมูลเป้าหมายที่เกี่ยวข้อง',
+                    style: TextStyle(fontSize: 12, color: kPrimary),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _showTDEEDialog,
+                  child: const Text('ตั้งเป้าหมาย',
+                      style: TextStyle(color: Colors.orange)),
+                ),
+              ],
+            ),
+          ),
+        if (tiles.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Column(
+            children: [
+              for (int i = 0; i < tiles.length; i++) ...[
+                tiles[i],
+                if (i != tiles.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.mood, size: 18, color: Colors.purple),
+              const SizedBox(width: 6),
+              Text(
+                'อารมณ์วันนี้: $mood',
+                style: const TextStyle(fontSize: 12, color: Colors.purple),
+              ),
+              const Spacer(),
+              if (_goalExerciseFrequencyWeek != null)
+                Text(
+                  'ความถี่/สัปดาห์: $_goalExerciseFrequencyWeek',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                ),
+            ],
           ),
         ],
+      ],
+    );
+  }
+
+  // --- Added: quick actions redesigned ---
+  Widget _buildQuickActions(bool isTablet) {
+    final btnStyle = ElevatedButton.styleFrom(
+      backgroundColor: kWhite,
+      foregroundColor: kPrimary,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      minimumSize: Size(0, isTablet ? 52 : 46), // ensure consistent height
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: kTeal.withOpacity(0.7), width: 2),
+        borderRadius: BorderRadius.circular(12),
       ),
+    );
+
+    Widget action(IconData icon, String label, VoidCallback onTap) {
+      return ElevatedButton(
+        style: btnStyle,
+        onPressed: onTap,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: kTeal, size: isTablet ? 30 : 26),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,               
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: kPrimary,
+                  fontSize: isTablet ? 16 : 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: action(Icons.track_changes, 'บันทึกกิจกรรม', () => widget.onNavigate(1))),
+        const SizedBox(width: 12),
+        Expanded(child: action(Icons.fastfood, 'การกินอาหาร', () => widget.onNavigate(2))),
+        const SizedBox(width: 12),
+        Expanded(child: action(Icons.bar_chart, 'ผลความก้าวหน้า', () => widget.onNavigate(3))),
+      ],
     );
   }
 
@@ -923,268 +1096,117 @@ class _DashboardState extends State<Dashboard> {
       );
     }
 
-    final String displayName =
-        _userData!['username'] ??
-        _userData!['email'] ??
-        'User';
-    final int? age = _userData!['age'];
     final double? weight = _userData!['weight']?.toDouble();
     final double? height = _userData!['height']?.toDouble();
-    final String bmiResult = _calculateBmi(weight, height);
+    final bmiText = _calculateBmi(weight, height);
 
-    // ปรับปรุงการเข้าถึงข้อมูลสุขภาพให้เข้ากับโครงสร้างใหม่ - รองรับทั้ง Firebase และ FastAPI structure
     String bloodPressure = 'N/A';
-    int? heartRate;
-    
-    // ลองดึงข้อมูลจาก FastAPI structure ก่อน
     if (_userData!['blood_pressure'] != null) {
       bloodPressure = _userData!['blood_pressure'];
     }
-    if (_userData!['heart_rate'] != null) {
-      heartRate = _userData!['heart_rate'];
-    }
-    
-    // ถ้าไม่มี ลองดึงจาก Firebase structure (สำหรับข้อมูลเก่า)
     if (bloodPressure == 'N/A' && _userData!['healthInfo'] != null) {
       final healthInfo = _userData!['healthInfo'];
       bloodPressure = healthInfo['bloodPressure'] ?? 'N/A';
-      heartRate = healthInfo['heartRate'];
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
 
-    final bool exerciseDone = _exerciseData?["isTaskCompleted"] == true;
-    final bool waterDone = _waterData?["isTaskCompleted"] == true;
-
-    final String evaluation = evaluateHealth(
-      weight: weight,
-      height: height,
-      bloodPressure: bloodPressure,
-      heartRate: heartRate,
-      mood: mood,
-      exerciseCompleted: exerciseDone,
-      waterCompleted: waterDone,
-    );
+    final name = (_userData?['username'] ??
+            _userData?['email'] ??
+            'เพื่อนสุขภาพ')
+        .toString();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFB),
       body: RefreshIndicator(
+        color: kMint,
         onRefresh: refreshAllData,
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(), // เพื่อให้ pull-to-refresh ทำงานได้
-          padding: const EdgeInsets.all(30),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-            Container(
-              height: isTablet ? 200 : 150,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
+              // Header
+              _buildHeaderCard(
+                isTablet: isTablet,
+                name: name,
+                streakProgress: (totalDays == 0)
+                    ? 0
+                    : savedDays / totalDays,
               ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/Health.jpg',
-                  width: double.infinity,
-                  height: 150,
-                  fit: BoxFit.cover,
-                ),
+              const SizedBox(height: 20),
+
+              // Stats grid
+              _buildStatsGrid(
+                bmiText: bmiText,
+                bloodPressure: bloodPressure,
+                isTablet: isTablet,
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'บันทึกมาแล้ว ($savedDays วัน) 🔥',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: savedDays / totalDays,
-                    backgroundColor: Colors.grey[300],
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.blue,
+              const SizedBox(height: 20),
+
+              // Today vs Goal
+              _buildGoalVsTodaySection(isTablet),
+              const SizedBox(height: 24),
+
+              // Quick actions
+              Row(
+                children: const [
+                  Icon(Icons.apps, color: kMint),
+                  SizedBox(width: 8),
+                  Text(
+                    'บันทึกประจำวัน',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: kPrimary,
                     ),
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text('$totalDays วัน', style: const TextStyle(fontSize: 14)),
-              ],
-            ),
-            const SizedBox(height: 30),
-            const Center(
-              child: Text(
-                'สิ่งที่ต้องทำประจำวัน',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 15),
-            Center(
-              child: Wrap(
-                spacing: 30,
-                runSpacing: 20,
-                alignment: WrapAlignment.center,
-                children: <Widget>[
-                  _buildDailyTaskItem(
-                    icon: Icons.track_changes,
-                    label: 'ติดตามประจำวัน',
-                    onTap: () {
-                      widget.onNavigate(1);
-                    },
-                    isTablet: isTablet,
-                  ),
-                  _buildDailyTaskItem(
-                    icon: Icons.fastfood,
-                    label: 'บันทึกอาหาร',
-                    onTap: () {
-                      widget.onNavigate(2);
-                    },
-                    isTablet: isTablet,
-                  ),
-                  _buildDailyTaskItem(
-                    icon: Icons.bar_chart,
-                    label: 'ผลความก้าวหน้า',
-                    onTap: () {
-                      widget.onNavigate(3);
-                    },
-                    isTablet: isTablet,
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 30),
-            
-            // Health Goal Button - Moved below daily tasks
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: _showTDEEDialog,
-                icon: const Icon(Icons.track_changes, size: 20),
-                label: const Text(
-                  'ตั้งเป้าหมายสุขภาพ',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+              const SizedBox(height: 12),
+              _buildQuickActions(isTablet), // now renders 3 buttons in one row
+              const SizedBox(height: 24),
+
+              // Health Goal Button
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: _showTDEEDialog,
+                  icon: const Icon(Icons.track_changes, size: 20),
+                  label: const Text(
+                    'ตั้งเป้าหมายสุขภาพ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: kWhite,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kMint,
+                    foregroundColor: kWhite,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                    shadowColor: kMint.withOpacity(0.3),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF79D7BE),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                  shadowColor: const Color(0xFF79D7BE).withOpacity(0.4),
-                ),
               ),
-            ),
-            
-            const SizedBox(height: 30),
-            const Divider(thickness: 2, color: Colors.grey),
-            const Center(
-              child: Text(
-                "สุขภาพประจำวัน",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "ผลการประเมิน: ",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      Icon(
-                        evaluation == "สุขภาพดี"
-                            ? Icons.check_circle
-                            : Icons.warning,
-                        color: evaluation == "สุขภาพดี"
-                            ? Colors.green
-                            : Colors.orange,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        evaluation,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: evaluation == "สุขภาพดี"
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 20.0,
-                    runSpacing: 15.0,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      _buildHealthMetricItem(
-                        label: "ชื่อผู้ใช้",
-                        value: displayName,
-                      ),
-                      _buildHealthMetricItem(
-                        label: "อายุ",
-                        value: "${age ?? 'N/A'} ปี",
-                      ),
-                      _buildHealthMetricItem(
-                        label: "น้ำหนัก",
-                        value: "${weight ?? 'N/A'} kg",
-                      ),
-                      _buildHealthMetricItem(
-                        label: "ส่วนสูง",
-                        value: "${height ?? 'N/A'} cm",
-                      ),
-                      _buildHealthMetricItem(
-                        label: "ค่า BMI",
-                        value: bmiResult,
-                      ),
-                      _buildHealthMetricItem(
-                        label: "ความดันโลหิต",
-                        value: bloodPressure,
-                      ),
-                      _buildHealthMetricItem(
-                        label: "อัตราเต้นหัวใจ",
-                        value: "${heartRate ?? 'N/A'} bpm",
-                      ),
-                      _buildHealthMetricItem(label: "อารมณ์", value: mood),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-                  _buildTaskInfo(),
-                ],
-              ),
-            ),
-          ], // ปิด children ของ Column
-        ), // ปิด Column (child ของ SingleChildScrollView)
-      ), // ปิด SingleChildScrollView (child ของ RefreshIndicator)
-    ), // ปิด RefreshIndicator (body ของ Scaffold)
-    ); // ปิด Scaffold
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
+// Goal-setting dialog and logic remain unchanged below
 class _TDEECalculatorDialog extends StatefulWidget {
   final double bmr;
   final double weight;
@@ -1677,10 +1699,6 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
     ];
   }
 
-
-
-
-
   Widget _buildActivityLevelStep() {
     return SingleChildScrollView(
       child: Column(
@@ -1691,7 +1709,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E5077),
+              color: Color(0xFF2E5077), // #2E5077
             ),
           ),
           const SizedBox(height: 8),
@@ -1708,8 +1726,8 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey[300]!),
+              color: Colors.white, // #FFFFFF
+              border: Border.all(color: const Color(0xFF79D7BE).withOpacity(0.3)), // mint 30%
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -1774,8 +1792,8 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey[300]!),
+              color: Colors.white, // #FFFFFF
+              border: Border.all(color: const Color(0xFF79D7BE).withOpacity(0.3)), // mint 30%
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -1809,7 +1827,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                   keyboardType: TextInputType.number,
                   initialValue: selectedExerciseFrequency?.toString() ?? '',
                   decoration: InputDecoration(
-                   
+                    hintText: 'เช่น 3',
                     suffixText: 'ครั้ง/สัปดาห์',
                     prefixIcon: const Icon(Icons.repeat, color: Color(0xFF79D7BE)),
                     border: OutlineInputBorder(
@@ -1817,7 +1835,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF79D7BE), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFF79D7BE), width: 2), // mint
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -1899,12 +1917,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E5077),
+              color: Color(0xFF2E5077), // #2E5077
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'ระบบจะกำหนดเป้าหมายให้อัตโนมัติตามน้ำหนักที่คุณกรอก',
+            'ระบบจะกำหนดเป้าหมายให้อัตโนติตามน้ำหนักที่คุณกรอก',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
@@ -1914,7 +1932,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: const Color(0xFF4DA1A9).withOpacity(0.1), // teal 10%
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -2083,7 +2101,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E5077),
+              color: Color(0xFF2E5077), // #2E5077
             ),
           ),
           const SizedBox(height: 8),
@@ -2108,12 +2126,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: selectedTimeframe == timeframe
-                        ? const Color(0xFF79D7BE).withOpacity(0.2)
-                        : Colors.white,
+                        ? const Color(0xFF79D7BE).withOpacity(0.2) // mint 20%
+                        : Colors.white, // #FFFFFF
                     border: Border.all(
                       color: selectedTimeframe == timeframe
-                          ? const Color(0xFF79D7BE)
-                          : Colors.grey[300]!,
+                          ? const Color(0xFF79D7BE) // mint
+                          : const Color(0xFF4DA1A9).withOpacity(0.3), // teal 30%
                       width: 2,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -2158,7 +2176,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E5077),
+              color: Color(0xFF2E5077), // #2E5077
             ),
           ),
           const SizedBox(height: 8),
@@ -2175,8 +2193,8 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey[300]!),
+              color: Colors.white, // #FFFFFF
+              border: Border.all(color: const Color(0xFF79D7BE).withOpacity(0.3)), // mint 30%
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -2257,8 +2275,8 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey[300]!),
+              color: Colors.white, // #FFFFFF
+              border: Border.all(color: const Color(0xFF79D7BE).withOpacity(0.3)), // mint 30%
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -2334,8 +2352,6 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           ),
           
           const SizedBox(height: 12),
-          
-
         ],
       ),
     );
@@ -2346,13 +2362,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Simple Header
           const Text(
             'สรุปเป้าหมายของคุณ',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2E5077),
+              color: Color(0xFF2E5077), // #2E5077
             ),
           ),
           const SizedBox(height: 8),
@@ -2546,9 +2561,9 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white, // #FFFFFF
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!, width: 1),
+        border: Border.all(color: const Color(0xFF79D7BE).withOpacity(0.2), width: 1), // mint 20%
       ),
       child: Row(
         children: [
@@ -2556,12 +2571,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (color ?? const Color(0xFF79D7BE)).withOpacity(0.1),
+                color: (color ?? const Color(0xFF79D7BE)).withOpacity(0.1), // mint 10%
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
-                color: color ?? const Color(0xFF79D7BE),
+                color: color ?? const Color(0xFF79D7BE), // mint
                 size: 20,
               ),
             ),
@@ -2576,7 +2591,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey,
+                    color: Color(0xFF2E5077), // #2E5077
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -2585,16 +2600,16 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E5077),
+                    color: Color(0xFF2E5077), // #2E5077
                   ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: Color(0xFF4DA1A9), // #4DA1A9 subtle
                     ),
                   ),
                 ],
@@ -2618,12 +2633,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             return AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.water_drop, color: Color(0xFF79D7BE)),
+                  Icon(Icons.water_drop, color: Color(0xFF79D7BE)), // mint
                   SizedBox(width: 8),
                   Text('เลือกเป้าหมายดื่มน้ำ'),
                 ],
               ),
-              content: Container(
+              content: SizedBox(
                 width: 300,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2650,10 +2665,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF79D7BE) : Colors.grey[100],
+                              color: isSelected ? const Color(0xFF79D7BE) : const Color(0xFFFFFFFF), // mint/white
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelected ? const Color(0xFF79D7BE) : Colors.grey[300]!,
+                                color: isSelected
+                                    ? const Color(0xFF79D7BE) // mint
+                                    : const Color(0xFF4DA1A9).withOpacity(0.4), // teal 40%
                                 width: 2,
                               ),
                             ),
@@ -2662,14 +2679,14 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                               children: [
                                 Icon(
                                   Icons.water_drop,
-                                  color: isSelected ? Colors.white : const Color(0xFF79D7BE),
+                                  color: isSelected ? Colors.white : const Color(0xFF79D7BE), // white/mint
                                   size: 20,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '$glassCount',
                                   style: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.black,
+                                    color: isSelected ? Colors.white : const Color(0xFF2E5077), // white/primary
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),
@@ -2695,7 +2712,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('ยกเลิก'),
+                  child: const Text('ยกเลิก', style: TextStyle(color: Color(0xFF2E5077))), // primary
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -2705,7 +2722,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF79D7BE),
+                    backgroundColor: const Color(0xFF79D7BE), // mint
                   ),
                   child: const Text('ยืนยัน', style: TextStyle(color: Colors.white)),
                 ),
@@ -2727,12 +2744,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
             return AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.nights_stay, color: Color(0xFF79D7BE)),
+                  Icon(Icons.nights_stay, color: Color(0xFF79D7BE)), // mint
                   SizedBox(width: 8),
                   Text('เลือกเป้าหมายการนอน'),
                 ],
               ),
-              content: Container(
+              content: SizedBox(
                 width: 300,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2759,10 +2776,12 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF79D7BE) : Colors.grey[100],
+                              color: isSelected ? const Color(0xFF79D7BE) : const Color(0xFFFFFFFF), // mint/white
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelected ? const Color(0xFF79D7BE) : Colors.grey[300]!,
+                                color: isSelected
+                                    ? const Color(0xFF79D7BE) // mint
+                                    : const Color(0xFF4DA1A9).withOpacity(0.4), // teal 40%
                                 width: 2,
                               ),
                             ),
@@ -2771,14 +2790,14 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                               children: [
                                 Icon(
                                   Icons.nights_stay,
-                                  color: isSelected ? Colors.white : const Color(0xFF79D7BE),
+                                  color: isSelected ? Colors.white : const Color(0xFF79D7BE), // white/mint
                                   size: 20,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${sleepHours}h',
                                   style: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.black,
+                                    color: isSelected ? Colors.white : const Color(0xFF2E5077), // white/primary
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),
@@ -2798,6 +2817,16 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                         color: Color(0xFF79D7BE),
                       ),
                     ),
+                    if (selectedExerciseFrequency != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'รวม ${selectedSleep * selectedExerciseFrequency!} ชั่วโมง/สัปดาห์',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
