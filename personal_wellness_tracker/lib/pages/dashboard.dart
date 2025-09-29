@@ -16,11 +16,13 @@ class _DashboardState extends State<Dashboard> {
   Map<String, dynamic>? _exerciseData;
   Map<String, dynamic>? _sleepData;
   Map<String, dynamic>? _waterData;
+  Map<String, dynamic>? _userGoals;
   bool _isLoading = true;
   String? _errorMessage;
   int savedDays = 0;
   int totalDays = 7;
   String mood = "N/A";
+  bool _hasShownGoalPopup = false;
 
   @override
   void initState() {
@@ -28,6 +30,7 @@ class _DashboardState extends State<Dashboard> {
     _fetchUserData();
     loadData();
     loadDailyTasks();
+    _fetchUserGoals();
   }
 
   @override
@@ -46,12 +49,14 @@ class _DashboardState extends State<Dashboard> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _hasShownGoalPopup = false; // Reset popup state เมื่อ refresh
     });
     
     await Future.wait([
       _fetchUserData(),
       loadData(),
       loadDailyTasks(),
+      _fetchUserGoals(),
     ]);
   }
 
@@ -102,7 +107,209 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  // ตรวจสอบและดึงข้อมูลเป้าหมายของผู้ใช้
+  Future<void> _fetchUserGoals() async {
+    try {
+      final currentUser = await _apiService.getCurrentUser();
+      final userId = currentUser['uid']?.toString() ?? 
+                     currentUser['id']?.toString() ?? 
+                     currentUser['user_id']?.toString() ?? '';
+      
+      if (userId.isNotEmpty) {
+        final goals = await _apiService.getUserGoals(userId);
+        if (mounted) {
+          setState(() {
+            _userGoals = goals;
+          });
+          
+          // ตรวจสอบว่าต้องแสดง popup หรือไม่
+          _checkAndShowGoalPopup();
+        }
+      }
+    } catch (e) {
+      print("DEBUG: Error fetching user goals: $e");
+      // ถ้าไม่มี goals หรือเกิดข้อผิดพลาด ให้แสดง popup
+      if (mounted) {
+        _checkAndShowGoalPopup();
+      }
+    }
+  }
 
+  // ตรวจสอบและแสดง popup สำหรับการตั้งเป้าหมาย
+  void _checkAndShowGoalPopup() {
+    // ถ้าเพิ่งแสดง popup ไปแล้ว ไม่ต้องแสดงอีก
+    if (_hasShownGoalPopup) return;
+    
+    // ตรวจสอบว่าผู้ใช้มีเป้าหมายที่ active หรือไม่
+    bool hasActiveGoal = false;
+    if (_userGoals != null && _userGoals!.isNotEmpty) {
+      hasActiveGoal = _userGoals!['is_active'] == true;
+    }
+    
+    // ถ้าไม่มีเป้าหมายที่ active ให้แสดง popup
+    if (!hasActiveGoal) {
+      // รอให้ UI build เสร็จก่อนแสดง popup
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_hasShownGoalPopup) {
+          _showGoalEncouragementPopup();
+        }
+      });
+    }
+  }
+
+  // แสดง popup กระตุ้นให้ตั้งเป้าหมาย
+  void _showGoalEncouragementPopup() {
+    if (!mounted) return;
+    
+    setState(() {
+      _hasShownGoalPopup = true;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.track_changes,
+                color: const Color(0xFF79D7BE),
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'ลองตั้งเป้าหมายดู!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E5077),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF79D7BE).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF79D7BE).withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'การตั้งเป้าหมายจะช่วยให้คุณ:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2E5077),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildGoalBenefit('🎯', 'ติดตามความก้าวหน้าได้ชัดเจน'),
+                    _buildGoalBenefit('💪', 'สร้างแรงจูงใจในการดูแลสุขภาพ'),
+                    _buildGoalBenefit('📊', 'คำนวณแคลอรี่ที่เหมาะสมกับคุณ'),
+                    _buildGoalBenefit('🏆', 'บรรลุเป้าหมายสุขภาพได้อย่างมีประสิทธิภาพ'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'เริ่มต้นตั้งเป้าหมายแรกของคุณตอนนี้เลย! 🌟',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // ไม่ reset _hasShownGoalPopup เมื่อกด "ไว้ทีหลัง" เพื่อไม่ให้แสดงอีก
+              },
+              child: Text(
+                'ไว้ทีหลัง',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // รอให้ popup ปิดแล้วค่อยเปิด dialog ใหม่
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  _showTDEEDialog(); // เรียกใช้ dialog ตั้งเป้าหมาย
+                });
+              },
+              icon: const Icon(Icons.add_task, size: 20),
+              label: const Text(
+                'ตั้งเป้าหมายเลย!',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF79D7BE),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Widget สำหรับแสดงประโยชน์ของการตั้งเป้าหมาย
+  Widget _buildGoalBenefit(String emoji, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            emoji,
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF2E5077),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void updateGoal(int days) {
     List<int> goals = [7, 14, 30, 60, 90, 180, 365];
@@ -218,6 +425,9 @@ class _DashboardState extends State<Dashboard> {
           apiService: _apiService,
           onGoalSaved: () {
             // Refresh data after saving goal
+            setState(() {
+              _hasShownGoalPopup = true; // Don't show popup again after goal is saved
+            });
             refreshAllData();
           },
         );
@@ -847,6 +1057,36 @@ class _DashboardState extends State<Dashboard> {
               ),
             ),
             const SizedBox(height: 30),
+            
+            // Health Goal Button - Moved below daily tasks
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _showTDEEDialog,
+                icon: const Icon(Icons.track_changes, size: 20),
+                label: const Text(
+                  'ตั้งเป้าหมายสุขภาพ',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF79D7BE),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                  shadowColor: const Color(0xFF79D7BE).withOpacity(0.4),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 30),
             const Divider(thickness: 2, color: Colors.grey),
             const Center(
               child: Text(
@@ -930,36 +1170,6 @@ class _DashboardState extends State<Dashboard> {
                       ),
                       _buildHealthMetricItem(label: "อารมณ์", value: mood),
                     ],
-                  ),
-
-                  const SizedBox(height: 20),
-                  
-                  // TDEE Calculator Button
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _showTDEEDialog,
-                      icon: const Icon(Icons.calculate, size: 20),
-                      label: const Text(
-                        'คำนวณ TDEE และตั้งเป้าหมาย',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF79D7BE),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 4,
-                        shadowColor: const Color(0xFF79D7BE).withOpacity(0.4),
-                      ),
-                    ),
                   ),
 
                   const SizedBox(height: 20),
