@@ -746,3 +746,15 @@ def get_user_streak(
         # fallback to stored value if available
         streak = current_user.day_streak or 0
     return {"streak_count": streak}
+
+# @app.get("/tasks/{date}", tags=["Tasks"])
+# def get_tasks_by_date(
+#     date: str,
+#     db: Session = Depends(get_db), 
+#     current_user: models.User = Depends(deps.get_current_active_user)
+# ):
+#     """Get daily tasks by date"""
+#     return {
+#         "date": date,
+#         "tasks": []
+#     }

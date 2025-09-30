@@ -67,7 +67,10 @@ class DataExportService {
           }
         }
       } else {
-        final tasks = await _apiService.getTasksByDate(date);
+        // fallback → ensure daily task แล้วดึง tasks
+        final ensured = await DailyTaskApi.ensureDailyTaskForDate(date);
+        final tasks = await DailyTaskApi.getTasks(ensured['id'].toString());
+
         for (final t in tasks) {
           switch (t['task_type']) {
             case 'water':

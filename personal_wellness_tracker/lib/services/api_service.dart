@@ -912,29 +912,72 @@ class ApiService {
     }
   }
 
+  // Future<List<Map<String, dynamic>>> getTasksByDate(DateTime date) async {
+  //   final headers = await getHeaders();
+  //   final dateStr =
+  //       "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+  //   final response = await http.get(
+  //     Uri.parse('$baseUrl/tasks/$dateStr'),
+  //     headers: headers,
+  //   );
+
+  //   if (response.statusCode == 200) {
+  //     final decoded = jsonDecode(response.body);
+
+  //     // response อาจเป็น list หรือ object หุ้ม list
+  //     final List<dynamic> tasks = decoded is List
+  //         ? decoded
+  //         : (decoded is Map && decoded['data'] is List ? decoded['data'] : []);
+
+  //     return tasks.whereType<Map<String, dynamic>>().toList();
+  //   } else if (response.statusCode == 404) {
+  //     return [];
+  //   } else {
+  //     throw Exception('Failed to get tasks by date: ${response.body}');
+  //   }
+  // }
+
   Future<List<Map<String, dynamic>>> getTasksByDate(DateTime date) async {
     final headers = await getHeaders();
     final dateStr =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/tasks/$dateStr'),
+    final currentUser = await getCurrentUser();
+    final userId = currentUser['uid'] ?? currentUser['id'];
+
+    final dailyRes = await http.get(
+      Uri.parse('$baseUrl/users/$userId/daily-tasks/$dateStr'),
       headers: headers,
     );
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
+    if (dailyRes.statusCode == 200) {
+      final daily = jsonDecode(dailyRes.body);
+      final dailyTaskId = daily['id']?.toString();
+      if (dailyTaskId == null) return [];
 
-      // response อาจเป็น list หรือ object หุ้ม list
-      final List<dynamic> tasks = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['data'] is List ? decoded['data'] : []);
+      final tasksRes = await http.get(
+        Uri.parse('$baseUrl/daily-tasks/$dailyTaskId/tasks/'),
+        headers: headers,
+      );
 
-      return tasks.whereType<Map<String, dynamic>>().toList();
-    } else if (response.statusCode == 404) {
+      if (tasksRes.statusCode == 200) {
+        final decoded = jsonDecode(tasksRes.body);
+        final List<dynamic> tasks = decoded is List
+            ? decoded
+            : (decoded is Map && decoded['data'] is List
+                  ? decoded['data']
+                  : []);
+        return tasks.whereType<Map<String, dynamic>>().toList();
+      } else if (tasksRes.statusCode == 404) {
+        return [];
+      } else {
+        throw Exception('Failed to get tasks: ${tasksRes.body}');
+      }
+    } else if (dailyRes.statusCode == 404) {
       return [];
     } else {
-      throw Exception('Failed to get tasks by date: ${response.body}');
+      throw Exception('Failed to get daily task: ${dailyRes.body}');
     }
   }
 }
