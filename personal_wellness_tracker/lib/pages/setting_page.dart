@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart'; // ThemeProvider
 import '../services/auth_service.dart';
-import '../app/notification_service.dart';
+import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -70,8 +70,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadNotificationSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedValue = prefs.getBool('notificationsEnabled') ?? true;
+    final savedValue = await NotificationService().isEnabled();
+    if (!mounted) return;
     setState(() => notificationsEnabled = savedValue);
   }
 
@@ -296,9 +296,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: notificationsEnabled,
                 onChanged: (val) async {
                   setState(() => notificationsEnabled = val);
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('notificationsEnabled', val);
-                  await initNotificationService();
+                  await NotificationService().setEnabled(val);
                 },
               ),
               const Divider(),

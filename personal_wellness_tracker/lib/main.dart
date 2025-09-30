@@ -14,14 +14,14 @@ import 'pages/progress_page.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'app/notification_service.dart';
+import 'services/notification_service.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'providers/user_provider.dart';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
+// import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
@@ -53,8 +53,16 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.loadThemeFromPrefs();
 
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await initNotificationService();
+  // Initialize and schedule daily local notification at 08:00
+  final notificationService = NotificationService();
+  await notificationService.init();
+  await notificationService.requestExactAlarmsPermissionIfNeeded();
+  //await NotificationService().debugStatus();
+  if (await notificationService.isEnabled()) {
+    await notificationService.scheduleDailyMorningNotification(hour: 8, minute: 0);
+  } else {
+    await notificationService.cancelDaily();
+  }
 
   runApp(
     MultiProvider(
