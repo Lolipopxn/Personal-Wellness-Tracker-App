@@ -49,6 +49,31 @@ class DailyTaskApi {
 
   static String _fmt(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
+  // --- New: GET /stats/streak -> int ---
+  static Future<int> getStreakCount() async {
+    final token = await _getAccessToken();
+    if (token == null) return 0;
+
+    final url = _api('/stats/streak');
+    try {
+      final res = await http
+          .get(url, headers: {'Authorization': 'Bearer $token'})
+          .timeout(_timeout);
+
+      if (res.statusCode == 200) {
+        final decoded = _safeDecode(res.body);
+        final v = decoded['streak_count'];
+        if (v is int) return v;
+        if (v is num) return v.toInt();
+      } else {
+        print('getStreakCount failed: ${res.statusCode} ${res.body}');
+      }
+    } catch (e) {
+      print('Error getStreakCount: $e');
+    }
+    return 0;
+  }
+
   // =========================
   //  GET /users/{user_id}/daily-tasks/{task_date}
   //  (คืน Map หรือ null ถ้าไม่พบ)

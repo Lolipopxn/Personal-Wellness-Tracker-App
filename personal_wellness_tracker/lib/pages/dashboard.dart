@@ -390,11 +390,19 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> loadData() async {
-    int count = await _apiService.getStreakCount();
-    setState(() {
-      savedDays = count;
-      updateGoal(count);
-    });
+    try {
+      final count = await DailyTaskApi.getStreakCount();
+      setState(() {
+        savedDays = count;
+        updateGoal(count);
+      });
+    } catch (e) {
+      print('Error loading streak count: $e');
+      setState(() {
+        savedDays = 0;
+        updateGoal(0);
+      });
+    }
   }
 
   Future<void> loadDailyTasks() async {
@@ -669,16 +677,27 @@ class _DashboardState extends State<Dashboard> {
 
   // --- Added: gradient header with streak progress ---
   Widget _buildHeaderCard({
-    required bool isTablet,
-    required String name,
-    required double streakProgress,
-  }) {
-    return Container(
+  required bool isTablet,
+  required String name,
+  required double streakProgress,
+  required int savedDays,
+  required int totalDays,
+  VoidCallback? onPressGoal,
+}) {
+  final double titleSize = isTablet ? 26 : 22;
+  final double subTitleSize = isTablet ? 18 : 16;
+  final double buttonFont = isTablet ? 16 : 14;
+  final double hPad = isTablet ? 24 : 18;
+  final double vPad = isTablet ? 24 : 18;
+
+  final progress = streakProgress.clamp(0.0, 1.0);
+
+  return Semantics(
+    container: true,
+    label: 'การ์ดหัวหน้าแดชบอร์ด',
+    child: Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 24 : 18,
-        vertical: isTablet ? 24 : 18,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [kTeal, kMint],
@@ -688,62 +707,134 @@ class _DashboardState extends State<Dashboard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: kMint.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: kMint.withOpacity(0.28),
+            blurRadius: 14,
+            spreadRadius: 1,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'สวัสดี, $name',
-            style: TextStyle(
-              color: kWhite,
-              fontSize: isTablet ? 26 : 22,
-              fontWeight: FontWeight.w700,
-            ),
+          // Top row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'สวัสดี, $name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: kWhite,
+                        fontSize: titleSize,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'ติดตามสุขภาพของคุณทุกวัน',
+                      style: TextStyle(
+                        color: kWhite.withOpacity(0.92),
+                        fontSize: subTitleSize,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Goal button (optional)
+              if (onPressGoal != null) ...[
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: onPressGoal,
+                  icon: const Icon(Icons.track_changes, size: 20),
+                  label: Text(
+                    'เป้าหมาย',
+                    style: TextStyle(
+                      fontSize: buttonFont,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kWhite,
+                    foregroundColor: kPrimary,
+                    elevation: 0,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 14 : 10,
+                      vertical: isTablet ? 10 : 6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'ติดตามสุขภาพของคุณทุกวัน',
-            style: TextStyle(
-              color: kWhite.withOpacity(0.9),
-              fontSize: isTablet ? 18 : 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+
           const SizedBox(height: 16),
+
+          // Progress + counter
           Row(
             children: [
+              // Animated progress bar
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: streakProgress.clamp(0, 1),
-                    minHeight: 10,
-                    backgroundColor: kWhite.withOpacity(0.3),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(kWhite),
+                  borderRadius: BorderRadius.circular(999),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: progress),
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) {
+                      return LinearProgressIndicator(
+                        value: value,
+                        minHeight: 12,
+                        backgroundColor: kWhite.withOpacity(0.28),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(kWhite),
+                      );
+                    },
                   ),
                 ),
               ),
+
               const SizedBox(width: 12),
-              Text(
-                '$savedDays/$totalDays วัน',
-                style: const TextStyle(
-                  color: kWhite,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+
+              // Counter chip
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: kWhite.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: kWhite.withOpacity(0.28)),
+                ),
+                child: Text(
+                  '$savedDays/$totalDays วัน',
+                  style: TextStyle(
+                    color: kWhite,
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // --- Added: small stat card ---
   Widget _buildStatCard({
@@ -1132,9 +1223,10 @@ class _DashboardState extends State<Dashboard> {
               _buildHeaderCard(
                 isTablet: isTablet,
                 name: name,
-                streakProgress: (totalDays == 0)
-                    ? 0
-                    : savedDays / totalDays,
+                streakProgress: (totalDays == 0) ? 0 : savedDays / totalDays,
+                savedDays: savedDays,
+                totalDays: totalDays,
+                onPressGoal: _showTDEEDialog, // NEW: move button action to header
               ),
               const SizedBox(height: 20),
 
@@ -1166,38 +1258,19 @@ class _DashboardState extends State<Dashboard> {
                 ],
               ),
               const SizedBox(height: 12),
-              _buildQuickActions(isTablet), // now renders 3 buttons in one row
+              _buildQuickActions(isTablet),
               const SizedBox(height: 24),
 
-              // Health Goal Button
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: _showTDEEDialog,
-                  icon: const Icon(Icons.track_changes, size: 20),
-                  label: const Text(
-                    'ตั้งเป้าหมายสุขภาพ',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: kWhite,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kMint,
-                    foregroundColor: kWhite,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    shadowColor: kMint.withOpacity(0.3),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
+              // Removed bottom Health Goal Button (moved to header)
+              // Center(
+              //   child: ElevatedButton.icon(
+              //     onPressed: _showTDEEDialog,
+              //     icon: const Icon(Icons.track_changes, size: 20),
+              //     label: const Text('ตั้งเป้าหมายสุขภาพ'),
+              //     ...
+              //   ),
+              // ),
+              // const SizedBox(height: 16),
             ],
           ),
         ),
@@ -1257,7 +1330,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
   ];
 
 
-
+  
 
 
   double get tdee {
@@ -2541,9 +2614,6 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                 ],
               ),
             ),
-
-            
-
           ],
         ],
       ),
@@ -2779,9 +2849,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                               color: isSelected ? const Color(0xFF79D7BE) : const Color(0xFFFFFFFF), // mint/white
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF79D7BE) // mint
-                                    : const Color(0xFF4DA1A9).withOpacity(0.4), // teal 40%
+                                color: isSelected ? const Color(0xFF79D7BE) : Colors.grey[300]!,
                                 width: 2,
                               ),
                             ),

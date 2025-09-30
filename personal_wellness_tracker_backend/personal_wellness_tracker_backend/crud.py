@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import uuid
 
 from . import models, schemas
@@ -324,3 +324,42 @@ def update_app_statistics(db: Session, stats_update: schemas.AppStatisticsUpdate
     db.commit()
     db.refresh(db_stats)
     return db_stats
+
+# --- New: compute and persist user's day streak ---
+def compute_and_update_user_streak(db: Session, user_id: str) -> int:
+    """
+    Recalculate consecutive-day streak ending today where a day counts
+    only if there is at least one Task for that day.
+    Persist result to users.day_streak and return the streak.
+    """
+    today = date.today()
+    streak = 0
+    current_date = today
+
+    while True:
+        daily = db.query(models.DailyTask).filter(
+            models.DailyTask.user_id == user_id,
+            models.DailyTask.date == current_date
+        ).first()
+
+        if not daily:
+            break
+
+        has_tasks = db.query(models.Task).filter(
+            models.Task.daily_task_id == daily.id
+        ).count() > 0
+
+        if not has_tasks:
+            break
+
+        streak += 1
+        current_date = current_date - timedelta(days=1)
+
+    user = db.query(models.User).filter(models.User.uid == user_id).first()
+    if user:
+        user.day_streak = streak
+        user.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
+
+    return streak

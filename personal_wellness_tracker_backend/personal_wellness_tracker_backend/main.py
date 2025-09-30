@@ -442,7 +442,13 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user)
 ):
-    return crud.create_task(db=db, task=task)
+    db_task = crud.create_task(db=db, task=task)
+    # --- Added: update user's day streak after creating a task ---
+    try:
+        crud.compute_and_update_user_streak(db, current_user.uid)
+    except Exception as e:
+        print(f"WARN: Failed to update day streak after task create: {e}")
+    return db_task
 
 @app.get("/daily-tasks/{daily_task_id}/tasks/", response_model=List[schemas.Task], tags=["Tasks"])
 def read_tasks_by_daily_task(
@@ -462,6 +468,11 @@ def update_task(
     db_task = crud.update_task(db, task_id=task_id, task_update=task_update)
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    # --- Added: update user's day streak after updating a task ---
+    try:
+        crud.compute_and_update_user_streak(db, current_user.uid)
+    except Exception as e:
+        print(f"WARN: Failed to update day streak after task update: {e}")
     return db_task
 
 @app.delete("/tasks/{task_id}", tags=["Tasks"])
@@ -474,6 +485,11 @@ def delete_task(
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     crud.delete_task(db, task_id=task_id)
+    # --- Added: update user's day streak after deleting a task ---
+    try:
+        crud.compute_and_update_user_streak(db, current_user.uid)
+    except Exception as e:
+        print(f"WARN: Failed to update day streak after task delete: {e}")
     return {"message": "Task deleted successfully"}
 
 # Achievement endpoints
@@ -722,39 +738,11 @@ def get_user_streak(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user)
 ):
-    """Get user's streak count"""
-    # Simple implementation - count consecutive days with activities
-    return {"streak_count": 7}  # Mock data for now
-
-# Missing Tasks endpoints
-@app.get("/tasks/{date}", tags=["Tasks"])
-def get_tasks_by_date(
-    date: str,
-    db: Session = Depends(get_db), 
-    current_user: models.User = Depends(deps.get_current_active_user)
-):
-    """Get daily tasks by date"""
-    # Mock response with basic daily tasks structure
-    return {
-        "date": date,
-        "tasks": [
-            {
-                "id": 1,
-                "title": "ดื่มน้ำ 8 แก้ว",
-                "completed": False,
-                "category": "hydration"
-            },
-            {
-                "id": 2, 
-                "title": "ออกกำลังกาย 30 นาที",
-                "completed": False,
-                "category": "exercise"
-            },
-            {
-                "id": 3,
-                "title": "นอนหลับ 8 ชั่วโมง", 
-                "completed": False,
-                "category": "sleep"
-            }
-        ]
-    }
+    """Get user's streak count (recalculate to ensure up-to-date)"""
+    try:
+        streak = crud.compute_and_update_user_streak(db, current_user.uid)
+    except Exception as e:
+        print(f"WARN: Failed to compute streak in /stats/streak: {e}")
+        # fallback to stored value if available
+        streak = current_user.day_streak or 0
+    return {"streak_count": streak}
