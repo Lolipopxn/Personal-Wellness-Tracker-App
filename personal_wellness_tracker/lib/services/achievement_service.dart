@@ -152,6 +152,14 @@ class AchievementService {
     }
   }
 
+  // Call this immediately after a meal is successfully saved.
+  static Future<void> maybeTrackMealLogged(BuildContext context) async {
+    final res = await trackMealLogged();
+    if (res['success'] == true) {
+      _showUnlockedSnack(context, (res['newly_achieved'] as List?)?.cast<String>() ?? const []);
+    }
+  }
+
   static Future<void> maybeTrackDayComplete(
     BuildContext context, {
     required int prevDone,

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/nutrition_service.dart';
 import '../services/api_service.dart';
 import '../widgets/nutrition_chart.dart';
+import '../services/achievement_service.dart'; // <-- เพิ่ม import
 
 class FoodSavePage extends StatefulWidget {
   const FoodSavePage({super.key});
@@ -1168,18 +1169,17 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                     if (context.mounted)
                                       Navigator.of(context).pop();
                                     
+                                    // Track achievement: บันทึกอาหารสำเร็จ
+                                    await AchievementService.maybeTrackMealLogged(context);
+
                                     // รีโหลดข้อมูลและอัปเดต total calories
                                     await _loadFoodLogs();
                                     
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            meal?['id'] != null
-                                                ? 'บันทึกการแก้ไขสำเร็จ'
-                                                : 'เพิ่มอาหารสำเร็จ',
+                                            meal?['id'] != null ? 'บันทึกการแก้ไขสำเร็จ' : 'เพิ่มอาหารสำเร็จ',
                                           ),
                                           backgroundColor: Colors.green,
                                         ),
@@ -1189,12 +1189,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                     if (context.mounted)
                                       Navigator.of(context).pop();
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text('เกิดข้อผิดพลาด: $e'),
-                                        ),
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
                                       );
                                     }
                                   }
@@ -1204,9 +1200,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
                               ),
-                              child: Text(
-                                meal?['id'] != null ? 'บันทึก' : 'เพิ่ม',
-                              ),
+                              child: Text(meal?['id'] != null ? 'บันทึก' : 'เพิ่ม'),
                             ),
                           ),
                         ],
