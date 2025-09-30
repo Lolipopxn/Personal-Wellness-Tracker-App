@@ -974,6 +974,43 @@ class _DashboardState extends State<Dashboard> {
       ));
     }
 
+    // NEW: Food intake tile (Goal from user_goals, Current from food_logs)
+    // - Goal: prefer goal_calorie_intake/goal_calories; fallback to goal_water_intake (per request)
+    // - Current: total_calories from today's food_log
+    final String? _uid =
+        _userData?['uid']?.toString() ?? _userData?['id']?.toString();
+    final double? _foodGoal = (
+            _userGoals?['goal_calorie_intake'] as num? ??
+            _userGoals?['goal_calories'] as num? ??
+            // Fallback explicitly requested: goal from goal_water_intake
+            _userGoals?['goal_water_intake'] as num?
+          )
+        ?.toDouble();
+
+    tiles.add(
+      FutureBuilder<Map<String, dynamic>?>(
+        future: (_uid == null || _uid.isEmpty)
+            ? Future.value(null)
+            : _apiService.getFoodLogByDate(_uid, DateTime.now()),
+        builder: (context, snapshot) {
+          final double currentCalories =
+              (snapshot.data?['total_calories'] as num?)?.toDouble() ?? 0.0;
+          final double goal = _foodGoal ?? 0.0;
+
+          return _buildProgressRow(
+            icon: Icons.fastfood,
+            color: Colors.orange,
+            title: 'การกินอาหาร',
+            currentLabel:
+                '${currentCalories.toStringAsFixed(0)} / ${goal > 0 ? goal.toStringAsFixed(0) : '-'} kcal',
+            current: currentCalories,
+            goal: goal > 0 ? goal : 1.0,
+            isTablet: isTablet,
+          );
+        },
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2296,43 +2333,27 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFF79D7BE)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        const Text(
-                          'เลือกจำนวนแก้วต่อวัน',
-                          style: TextStyle(fontSize: 12),
+                        const Icon(
+                          Icons.water_drop,
+                          color: Color(0xFF79D7BE),
+                          size: 16,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            ...List.generate(
-                              (targetWaterIntake ?? 8).clamp(0, 4),
-                              (index) => const Icon(
-                                Icons.water_drop,
-                                color: Color(0xFF79D7BE),
-                                size: 16,
-                              ),
-                            ),
-                            if ((targetWaterIntake ?? 8) > 4)
-                              Text(
-                                ' +${(targetWaterIntake ?? 8) - 4}',
-                                style: const TextStyle(
-                                  color: Color(0xFF79D7BE),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            const Spacer(),
-                            Text(
-                              '${targetWaterIntake ?? 8} แก้ว',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF79D7BE),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          '${targetWaterIntake ?? 8} แก้วต่อวัน',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF79D7BE),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Color(0xFF79D7BE),
+                          size: 12,
                         ),
                       ],
                     ),
@@ -2378,43 +2399,27 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFF79D7BE)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        const Text(
-                          'เลือกเวลานอนต่อวัน',
-                          style: TextStyle(fontSize: 12),
+                        const Icon(
+                          Icons.nights_stay,
+                          color: Color(0xFF79D7BE),
+                          size: 16,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            ...List.generate(
-                              (targetSleepHours ?? 8).clamp(0, 4),
-                              (index) => const Icon(
-                                Icons.nights_stay,
-                                color: Color(0xFF79D7BE),
-                                size: 16,
-                              ),
-                            ),
-                            if ((targetSleepHours ?? 8) > 4)
-                              Text(
-                                ' +${(targetSleepHours ?? 8) - 4}',
-                                style: const TextStyle(
-                                  color: Color(0xFF79D7BE),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            const Spacer(),
-                            Text(
-                              '${targetSleepHours ?? 8} ชม.',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF79D7BE),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          '${targetSleepHours ?? 8} ชม.',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF79D7BE),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Color(0xFF79D7BE),
+                          size: 12,
                         ),
                       ],
                     ),
@@ -2521,7 +2526,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           _buildSimpleCard(
             title: 'การออกกำลังกาย',
             content: selectedExerciseFrequency != null ? _getFrequencyDescription(selectedExerciseFrequency!) : 'ไม่ได้ตั้งค่า',
-            subtitle: '${selectedExerciseFrequency ?? 0} ครั้ง/สัปดาห์ × ${targetExerciseMinutesPerDay ?? 30} นาที/ครั้ง',
+            subtitle: '${selectedExerciseFrequency ?? 0} ครั้ง/สัปดาห์ x ${targetExerciseMinutesPerDay ?? 30} นาที/ครั้ง',
             icon: Icons.fitness_center,
             color: const Color(0xFF79D7BE),
           ),
