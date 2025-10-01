@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'python:3.11'
+      image 'python:3.13'
       // รันเป็น root และต่อ docker.sock ของโฮสต์ เพื่อ build/run ได้
       args '-u 0:0 -v /var/run/docker.sock:/var/run/docker.sock'
     }
@@ -163,7 +163,7 @@ EOF
                   -Dsonar.projectName="Personal Wellness Tracker Backend" \
                   -Dsonar.sources=personal_wellness_tracker_backend \
                   -Dsonar.tests=tests \
-                  -Dsonar.python.version=3.11 \
+                  -Dsonar.python.version=3.13 \
                   -Dsonar.python.coverage.reportPaths=coverage.xml \
                   -Dsonar.sourceEncoding=UTF-8
               fi
