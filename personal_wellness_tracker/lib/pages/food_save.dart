@@ -29,6 +29,24 @@ class _FoodSavePageState extends State<FoodSavePage> {
   int get totalCal => meals.fold(0, (sum, m) => sum + ((m['cal'] ?? 0) as int));
   int get goalCal => _userGoals?['goal_calorie_intake'] ?? 0;
 
+  // --- THEME HELPERS (Dark mode aware, preserve light colors) ---
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  Color _brandPrimary(BuildContext ctx) =>
+      _isDarkMode ? Theme.of(ctx).colorScheme.primary : const Color(0xFF79D7BE);
+  Color _cardColor(BuildContext ctx) =>
+      _isDarkMode ? Theme.of(ctx).cardColor : Colors.white;
+  Color _panelColor(BuildContext ctx, Color light) =>
+      _isDarkMode ? Theme.of(ctx).colorScheme.surfaceVariant : light;
+  Color _mutedText(BuildContext ctx) =>
+      _isDarkMode ? Colors.white70 : Colors.grey[600]!;
+  Color _mutedText2(BuildContext ctx) =>
+      _isDarkMode ? Colors.white60 : Colors.grey[500]!;
+  Color _dividerColor(BuildContext ctx) =>
+      _isDarkMode ? Colors.white12 : Colors.grey[200]!;
+  Color _onSurface(BuildContext ctx) =>
+      _isDarkMode ? Theme.of(ctx).colorScheme.onSurface : const Color(0xFF2E5077);
+  // --------------------------------------------------------------
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +99,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final primary = _brandPrimary(context);
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -89,16 +108,16 @@ class _FoodSavePageState extends State<FoodSavePage> {
             children: [
               Icon(
                 Icons.celebration,
-                color: const Color(0xFF79D7BE),
+                color: primary,
                 size: 28,
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'ยินดีด้วย! 🎉',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E5077),
+                  color: _onSurface(context),
                 ),
               ),
             ],
@@ -109,10 +128,10 @@ class _FoodSavePageState extends State<FoodSavePage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF79D7BE).withOpacity(0.1),
+                  color: primary.withOpacity(_isDarkMode ? 0.15 : 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF79D7BE).withOpacity(0.3),
+                    color: primary.withOpacity(_isDarkMode ? 0.4 : 0.3),
                   ),
                 ),
                 child: Column(
@@ -122,7 +141,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF2E5077),
+                        color: _onSurface(context),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -132,58 +151,31 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       children: [
                         Column(
                           children: [
-                            Text(
-                              'เป้าหมาย',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
+                            Text('เป้าหมาย', style: TextStyle(color: _mutedText(context), fontSize: 12)),
                             Text(
                               '$goalCal',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF79D7BE),
+                                color: primary,
                               ),
                             ),
-                            Text(
-                              'kcal',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 10,
-                              ),
-                            ),
+                            Text('kcal', style: TextStyle(color: _mutedText2(context), fontSize: 10)),
                           ],
                         ),
-                        const Icon(
-                          Icons.arrow_forward,
-                          color: Color(0xFF79D7BE),
-                        ),
+                        Icon(Icons.arrow_forward, color: primary),
                         Column(
                           children: [
-                            Text(
-                              'ปัจจุบัน',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
+                            Text('ปัจจุบัน', style: TextStyle(color: _mutedText(context), fontSize: 12)),
                             Text(
                               '$currentCal',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF79D7BE),
+                                color: primary,
                               ),
                             ),
-                            Text(
-                              'kcal',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 10,
-                              ),
-                            ),
+                            Text('kcal', style: TextStyle(color: _mutedText2(context), fontSize: 10)),
                           ],
                         ),
                       ],
@@ -205,10 +197,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
               const SizedBox(height: 16),
               Text(
                 'ยินดีกับความสำเร็จของคุณ! ให้ดำเนินต่อไปแบบนี้เรื่อยๆ นะ 💪',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: _mutedText(context)),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -217,11 +206,9 @@ class _FoodSavePageState extends State<FoodSavePage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF79D7BE),
+                backgroundColor: primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('ดีใจด้วย!'),
             ),
@@ -233,7 +220,6 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
   void _showExcessCaloriesDialog(int currentCal, int goalCal, int difference) {
     final percentageOver = ((difference / goalCal) * 100).round();
-    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -243,18 +229,14 @@ class _FoodSavePageState extends State<FoodSavePage> {
           ),
           title: Row(
             children: [
-              Icon(
-                Icons.warning_rounded,
-                color: Colors.orange[600],
-                size: 28,
-              ),
+              Icon(Icons.warning_rounded, color: Colors.orange[600], size: 28),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'เกินเป้าหมาย!',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E5077),
+                  color: _onSurface(context),
                 ),
               ),
             ],
@@ -265,11 +247,9 @@ class _FoodSavePageState extends State<FoodSavePage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.orange[50],
+                  color: _panelColor(context, Colors.orange[50]!),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.orange[200]!,
-                  ),
+                  border: Border.all(color: Colors.orange[200]!),
                 ),
                 child: Column(
                   children: [
@@ -278,7 +258,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF2E5077),
+                        color: _onSurface(context),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -288,43 +268,22 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       children: [
                         Column(
                           children: [
-                            Text(
-                              'เป้าหมาย',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
+                            Text('เป้าหมาย', style: TextStyle(color: _mutedText(context), fontSize: 12)),
                             Text(
                               '$goalCal',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF79D7BE),
+                                color: const Color(0xFF79D7BE),
                               ),
                             ),
-                            Text(
-                              'kcal',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 10,
-                              ),
-                            ),
+                            Text('kcal', style: TextStyle(color: _mutedText2(context), fontSize: 10)),
                           ],
                         ),
-                        const Icon(
-                          Icons.trending_up,
-                          color: Colors.orange,
-                        ),
+                        const Icon(Icons.trending_up, color: Colors.orange),
                         Column(
                           children: [
-                            Text(
-                              'ปัจจุบัน',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
+                            Text('ปัจจุบัน', style: TextStyle(color: _mutedText(context), fontSize: 12)),
                             Text(
                               '$currentCal',
                               style: TextStyle(
@@ -333,13 +292,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                 color: Colors.orange[600],
                               ),
                             ),
-                            Text(
-                              'kcal',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 10,
-                              ),
-                            ),
+                            Text('kcal', style: TextStyle(color: _mutedText2(context), fontSize: 10)),
                           ],
                         ),
                       ],
@@ -366,10 +319,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
               const SizedBox(height: 16),
               Text(
                 'แนะนำให้ลดปริมาณอาหารในมื้อถัดไป หรือเพิ่มการออกกำลังกายเพื่อเผาผลาญแคลอรี่ส่วนเกิน',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: _mutedText(context)),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -908,6 +858,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                       decoration: InputDecoration(
                                         labelText: 'โปรตีน',
                                         suffixText: 'g',
+                                        labelStyle: TextStyle(color: Colors.black),
+                                        suffixStyle: TextStyle(color: Colors.black),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(8),
                                         ),
@@ -917,6 +869,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                         ),
                                       ),
                                       keyboardType: TextInputType.number,
+                                      style: TextStyle(color: Colors.black),
                                       controller: proteinController,
                                       onChanged: (value) => updateNutritionChart(),
                                     ),
@@ -927,6 +880,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                       decoration: InputDecoration(
                                         labelText: 'คาร์บ',
                                         suffixText: 'g',
+                                        labelStyle: TextStyle(color: Colors.black),
+                                        suffixStyle: TextStyle(color: Colors.black),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(8),
                                         ),
@@ -937,6 +892,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                       ),
                                       keyboardType: TextInputType.number,
                                       controller: carbsController,
+                                      style: TextStyle(color: Colors.black),
                                       onChanged: (value) => updateNutritionChart(),
                                     ),
                                   ),
@@ -950,6 +906,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                       decoration: InputDecoration(
                                         labelText: 'ไขมัน',
                                         suffixText: 'g',
+                                        labelStyle: TextStyle(color: Colors.black),
+                                        suffixStyle: TextStyle(color: Colors.black),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(8),
                                         ),
@@ -959,6 +917,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                         ),
                                       ),
                                       keyboardType: TextInputType.number,
+                                      style: TextStyle(color: Colors.black),
                                       controller: fatController,
                                       onChanged: (value) => updateNutritionChart(),
                                     ),
@@ -969,6 +928,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                       decoration: InputDecoration(
                                         labelText: 'ใยอาหาร',
                                         suffixText: 'g',
+                                        labelStyle: TextStyle(color: Colors.black),
+                                        suffixStyle: TextStyle(color: Colors.black),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(8),
                                         ),
@@ -978,6 +939,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                         ),
                                       ),
                                       keyboardType: TextInputType.number,
+                                      style: TextStyle(color: Colors.black),
                                       controller: fiberController,
                                       onChanged: (value) => updateNutritionChart(),
                                     ),
@@ -989,6 +951,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                 decoration: InputDecoration(
                                   labelText: 'น้ำตาล',
                                   suffixText: 'g',
+                                  labelStyle: TextStyle(color: Colors.black),
+                                        suffixStyle: TextStyle(color: Colors.black),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -998,6 +962,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                                   ),
                                 ),
                                 keyboardType: TextInputType.number,
+                                style: TextStyle(color: Colors.black),
                                 controller: sugarController,
                                 onChanged: (value) => updateNutritionChart(),
                               ),
@@ -1244,13 +1209,14 @@ class _FoodSavePageState extends State<FoodSavePage> {
   }
 
   Color _getCalorieColor() {
-    if (goalCal <= 0) return const Color(0xFF2E5077);
-    
+    if (goalCal <= 0) {
+      return _isDarkMode ? Theme.of(context).colorScheme.primary : const Color(0xFF2E5077);
+    }
     final percentage = (totalCal / goalCal);
     if (percentage < 0.8) {
       return Colors.orange[600]!; // ต่ำกว่าเป้าหมาย
     } else if (percentage <= 1.1) {
-      return const Color(0xFF79D7BE); // ใกล้เป้าหมาย
+      return _brandPrimary(context); // ใกล้เป้าหมาย
     } else {
       return Colors.red[600]!; // เกินเป้าหมายมาก
     }
@@ -1258,31 +1224,15 @@ class _FoodSavePageState extends State<FoodSavePage> {
 
   Widget _buildCalorieProgressBar() {
     if (goalCal <= 0) return const SizedBox.shrink();
-    
     final progress = (totalCal / goalCal).clamp(0.0, 1.5);
     final percentage = ((totalCal / goalCal) * 100).round();
-    
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'ความคืบหน้า',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '$percentage%',
-              style: TextStyle(
-                fontSize: 12,
-                color: _getCalorieColor(),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text('ความคืบหน้า', style: TextStyle(fontSize: 12, color: _mutedText(context), fontWeight: FontWeight.w500)),
+            Text('$percentage%', style: TextStyle(fontSize: 12, color: _getCalorieColor(), fontWeight: FontWeight.bold)),
           ],
         ),
         const SizedBox(height: 6),
@@ -1291,7 +1241,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
             Container(
               height: 8,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: _dividerColor(context),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -1323,20 +1273,8 @@ class _FoodSavePageState extends State<FoodSavePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '0',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey[500],
-              ),
-            ),
-            Text(
-              '${goalCal}',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey[500],
-              ),
-            ),
+            Text('0', style: TextStyle(fontSize: 10, color: _mutedText2(context))),
+            Text('${goalCal}', style: TextStyle(fontSize: 10, color: _mutedText2(context))),
           ],
         ),
       ],
@@ -1353,17 +1291,13 @@ class _FoodSavePageState extends State<FoodSavePage> {
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                Icon(
-                  Icons.restaurant_menu,
-                  color: const Color(0xFF79D7BE),
-                  size: 24,
-                ),
+                Icon(Icons.restaurant_menu, color: _brandPrimary(context), size: 24),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'บันทึกอาหาร',
                     style: TextStyle(
-                      color: Color(0xFF2E5077),
+                      color: _onSurface(context),
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1371,22 +1305,14 @@ class _FoodSavePageState extends State<FoodSavePage> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _showMealDialog(),
-                  icon: const Icon(
-                    Icons.add,
-                    size: 20,
-                  ),
+                  icon: const Icon(Icons.add, size: 20),
                   label: const Text('เพิ่มอาหาร'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF79D7BE),
+                    backgroundColor: _brandPrimary(context),
                     foregroundColor: Colors.white,
                     elevation: 2,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                 ),
               ],
@@ -1396,7 +1322,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _cardColor(context),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
@@ -1435,25 +1361,17 @@ class _FoodSavePageState extends State<FoodSavePage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF79D7BE).withOpacity(0.1),
+                          color: _brandPrimary(context).withOpacity(_isDarkMode ? 0.15 : 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF79D7BE)),
+                          border: Border.all(color: _brandPrimary(context)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.calendar_today,
-                              size: 18,
-                              color: Color(0xFF79D7BE),
-                            ),
+                            Icon(Icons.calendar_today, size: 18, color: _brandPrimary(context)),
                             const SizedBox(width: 6),
                             Text(
                               '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF2E5077),
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: TextStyle(fontSize: 15, color: _onSurface(context), fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -1465,49 +1383,22 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              'รวม ',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
+                            Text('รวม ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _mutedText(context))),
                             Text(
                               '$totalCal',
-                              style: TextStyle(
-                                color: _getCalorieColor(),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                              ),
+                              style: TextStyle(color: _getCalorieColor(), fontWeight: FontWeight.bold, fontSize: 20),
                             ),
-                            Text(
-                              ' kcal',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
+                            Text(' kcal', style: TextStyle(fontSize: 16, color: _mutedText(context))),
                           ],
                         ),
                         if (goalCal > 0) ...[
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              Text(
-                                'เป้าหมาย ',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
+                              Text('เป้าหมาย ', style: TextStyle(fontSize: 12, color: _mutedText2(context))),
                               Text(
                                 '$goalCal kcal',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: const Color(0xFF79D7BE),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: TextStyle(fontSize: 12, color: _brandPrimary(context), fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -1530,7 +1421,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: _isDarkMode ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF7F8FA),
     );
   }
 
@@ -1579,7 +1470,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: typeMeals.isNotEmpty ? color : Colors.grey[300],
+                      color: typeMeals.isNotEmpty ? color : _dividerColor(context),
                       shape: BoxShape.circle,
                       boxShadow: typeMeals.isNotEmpty
                           ? [
@@ -1597,11 +1488,9 @@ class _FoodSavePageState extends State<FoodSavePage> {
                   if (!isLast)
                     Container(
                       width: 3,
-                      height: typeMeals.isEmpty
-                          ? 80
-                          : (typeMeals.length * 160.0),
+                      height: typeMeals.isEmpty ? 80 : (typeMeals.length * 160.0),
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: _dividerColor(context),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1621,9 +1510,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: typeMeals.isNotEmpty
-                              ? color
-                              : Colors.grey[600],
+                          color: typeMeals.isNotEmpty ? color : _mutedText(context),
                         ),
                       ),
                     ),
@@ -1631,7 +1518,7 @@ class _FoodSavePageState extends State<FoodSavePage> {
                       Text(
                         'ยังไม่มีอาหารในมื้อนี้',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: _mutedText2(context),
                           fontSize: 14,
                           fontStyle: FontStyle.italic,
                         ),
@@ -1643,7 +1530,6 @@ class _FoodSavePageState extends State<FoodSavePage> {
                           meal: meal,
                           onEdit: () async {
                             await _showMealDialog(meal: meal);
-                            // Refresh ข้อมูลหลังจากแก้ไขเสร็จ
                             _loadFoodLogs();
                           },
                           onDelete: () => _deleteMeal(meal['id']),
@@ -1740,12 +1626,18 @@ class _MealCardState extends State<MealCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Color cardColor = isDark ? Theme.of(context).cardColor : Colors.white;
+    Color placeholder = isDark ? Colors.white12 : Colors.grey[200]!;
+    Color muted = isDark ? Colors.white70 : Colors.grey[600]!;
+    Color placeholderIcon = isDark ? Colors.white38 : Colors.grey[400]!;
+
     return GestureDetector(
       onTap: widget.onEdit,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16, right: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -1768,7 +1660,7 @@ class _MealCardState extends State<MealCard> {
                     height: 80,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey[100],
+                      color: placeholder,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -1779,18 +1671,10 @@ class _MealCardState extends State<MealCard> {
                               height: 80,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                return Icon(
-                                  Icons.restaurant,
-                                  size: 40,
-                                  color: Colors.grey[400],
-                                );
+                                return Icon(Icons.restaurant, size: 40, color: placeholderIcon);
                               },
                             )
-                          : Icon(
-                              Icons.restaurant,
-                              size: 40,
-                              color: Colors.grey[400],
-                            ),
+                          : Icon(Icons.restaurant, size: 40, color: placeholderIcon),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1810,15 +1694,11 @@ class _MealCardState extends State<MealCard> {
                         if ((widget.meal['desc'] ?? '').isNotEmpty)
                           Text(
                             widget.meal['desc'],
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
+                            style: TextStyle(fontSize: 13, color: muted),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         const SizedBox(height: 6),
-                        
                       ],
                     ),
                   ),
@@ -1832,20 +1712,16 @@ class _MealCardState extends State<MealCard> {
             if (_isLoading)
               const Padding(
                 padding: EdgeInsets.only(bottom: 16),
-                child: SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+                child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             if (!_isLoading && _nutritionData != null)
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: isDark ? Theme.of(context).colorScheme.surfaceVariant : Colors.green[50],
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[100]!),
+                  border: Border.all(color: isDark ? Theme.of(context).dividerColor : Colors.green[100]!),
                 ),
                 child: Row(
                   children: [
@@ -1855,23 +1731,11 @@ class _MealCardState extends State<MealCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // แสดงสถานะข้อมูล
                           Row(
                             children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 14,
-                                color: Colors.grey[600],
-                              ),
+                              Icon(Icons.info_outline, size: 14, color: muted),
                               const SizedBox(width: 4),
-                              Text(
-                                'ข้อมูลโภชนาการ',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                              Text('ข้อมูลโภชนาการ', style: TextStyle(fontSize: 10, color: muted, fontWeight: FontWeight.w500)),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -1928,7 +1792,7 @@ class _MealCardState extends State<MealCard> {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
+            style: const TextStyle(fontSize: 12, color: Colors.black),
           ),
         ),
         Text(

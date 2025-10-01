@@ -233,27 +233,35 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
   }
 
+  // THEME HELPERS: dark-mode aware
+  ThemeData get _theme => Theme.of(context);
+  bool get _isDark => _theme.brightness == Brightness.dark;
+
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _theme.scaffoldBackgroundColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 2,
-        backgroundColor: Palette.teal,
+        backgroundColor: _isDark
+            ? (_theme.appBarTheme.backgroundColor ?? _theme.colorScheme.primary)
+            : Palette.teal,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
             bottomLeft: Radius.circular(20),
             bottomRight: Radius.circular(20),
           ),
         ),
-        title: const Text(
+        title: Text(
           'ความก้าวหน้าของฉัน',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: _isDark
+                ? (_theme.appBarTheme.foregroundColor ?? Colors.white)
+                : Colors.white,
             letterSpacing: 1.2,
           ),
         ),
@@ -268,12 +276,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
             Screenshot(
               controller: _screenshotController,
               child: Card(
-                color: Palette.paper,
-                shadowColor: Palette.cardShadow.withOpacity(0.1),
+                color: _isDark ? _theme.cardColor : Palette.paper,
+                shadowColor:
+                    (_isDark ? Colors.black : Palette.cardShadow).withOpacity(0.1),
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200, width: 1),
+                  side: BorderSide(
+                    color: _isDark ? Colors.white10 : Colors.grey.shade200,
+                    width: 1,
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -304,20 +316,26 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   'เป้าหมายวันนี้',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Palette.navy,
+                                    color: _isDark
+                                        ? _theme.colorScheme.onSurface
+                                        : Palette.navy,
                                   ),
                                 ),
                                 Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(20),
                                     color: _doneCount >= _totalTasks
-                                        ? Palette.teal
-                                        : Colors.grey.shade300,
+                                        ? (_isDark
+                                            ? _theme.colorScheme.primary
+                                            : Palette.teal)
+                                        : (_isDark
+                                            ? Colors.white10
+                                            : Colors.grey.shade300),
                                   ),
                                   child: IconButton(
                                     onPressed: _doneCount >= _totalTasks
@@ -326,8 +344,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                     icon: Icon(
                                       Icons.share,
                                       color: _doneCount >= _totalTasks
-                                          ? Colors.white
-                                          : Colors.grey.shade500,
+                                          ? (_isDark
+                                              ? _theme.colorScheme.onPrimary
+                                              : Colors.white)
+                                          : (_isDark
+                                              ? Colors.white38
+                                              : Colors.grey.shade500),
                                       size: 20,
                                     ),
                                     tooltip: _doneCount >= _totalTasks
@@ -340,9 +362,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             const SizedBox(height: 4),
                             Text(
                               dateString,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey,
+                                color: _isDark ? Colors.white70 : Colors.grey,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -351,8 +373,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             LinearProgressIndicator(
                               value: _doneCount / _totalTasks,
                               minHeight: 10,
-                              backgroundColor: Palette.mint.withOpacity(0.3),
-                              color: Palette.teal,
+                              backgroundColor: _isDark
+                                  ? _theme.colorScheme.surfaceVariant
+                                      .withOpacity(0.5)
+                                  : Palette.mint.withOpacity(0.3),
+                              color: _isDark
+                                  ? _theme.colorScheme.primary
+                                  : Palette.teal,
                               borderRadius: BorderRadius.circular(5),
                             ),
                             const SizedBox(height: 16),
@@ -381,15 +408,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               icon: Icons.sentiment_satisfied,
                               title: 'บันทึกอารมณ์',
                               isCompleted: goals['mood'] as bool,
-                              currentValue: goals['mood']
-                                  ? 'สำเร็จ'
-                                  : 'ยังไม่บันทึก',
+                              currentValue:
+                                  goals['mood'] ? 'สำเร็จ' : 'ยังไม่บันทึก',
                             ),
                             _buildGoalItem(
                               icon: Icons.restaurant,
                               title: 'แคลอรี่',
-                              isCompleted:
-                                  (goals['calories'] as double) >=
+                              isCompleted: (goals['calories'] as double) >=
                                   (_userGoals?['goal_calorie_intake'] ?? 2000),
                               currentValue:
                                   '${goals['calories']}/${_userGoals?['goal_calorie_intake'] ?? 2000} kcal',
@@ -423,9 +448,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     }
                   },
                   icon: const Icon(Icons.table_chart, color: Colors.white),
-                  label: const Text("Export CSV"),
+                  label: const Text("Export CSV", style: TextStyle(color: Colors.white),),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Palette.teal,
+                    backgroundColor:
+                        _isDark ? _theme.colorScheme.primary : Palette.teal,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -446,7 +472,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     }
                   },
                   icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
-                  label: const Text("Export PDF"),
+                  label: const Text("Export PDF", style: TextStyle(color: Colors.white),),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
                     shape: RoundedRectangleBorder(
@@ -522,44 +548,42 @@ class _ProgressScreenState extends State<ProgressScreen> {
       double sleep = 0;
       bool mood = false;
 
-      if (daily != null) {
-        final dailyTaskId = daily['id']?.toString();
-        if (dailyTaskId != null) {
-          final tasks = await DailyTaskApi.getTasks(dailyTaskId);
+      final dailyTaskId = daily['id']?.toString();
+      if (dailyTaskId != null) {
+        final tasks = await DailyTaskApi.getTasks(dailyTaskId);
 
-          for (final task in tasks) {
-            final type = (task['task_type'] ?? '').toString();
-            switch (type) {
-              case 'water':
-                water = ((task['value_number'] ?? 0) as num).toInt();
-                break;
-              case 'exercise':
-                exercise = ((task['value_number'] ?? 0) as num).toInt();
-                break;
-              case 'sleep':
-                if (task['started_at'] != null && task['ended_at'] != null) {
-                  final start = DateTime.tryParse(
-                    task['started_at'] ?? '',
-                  )?.toLocal();
-                  final end = DateTime.tryParse(
-                    task['ended_at'] ?? '',
-                  )?.toLocal();
-                  if (start != null && end != null) {
-                    sleep = end.difference(start).inMinutes / 60.0;
-                  }
+        for (final task in tasks) {
+          final type = (task['task_type'] ?? '').toString();
+          switch (type) {
+            case 'water':
+              water = ((task['value_number'] ?? 0) as num).toInt();
+              break;
+            case 'exercise':
+              exercise = ((task['value_number'] ?? 0) as num).toInt();
+              break;
+            case 'sleep':
+              if (task['started_at'] != null && task['ended_at'] != null) {
+                final start = DateTime.tryParse(
+                  task['started_at'] ?? '',
+                )?.toLocal();
+                final end = DateTime.tryParse(
+                  task['ended_at'] ?? '',
+                )?.toLocal();
+                if (start != null && end != null) {
+                  sleep = end.difference(start).inMinutes / 60.0;
                 }
-                break;
-              case 'mood':
-                if (task['value_text'] != null ||
-                    task['value_number'] != null) {
-                  mood = true;
-                }
-                break;
-            }
+              }
+              break;
+            case 'mood':
+              if (task['value_text'] != null ||
+                  task['value_number'] != null) {
+                mood = true;
+              }
+              break;
           }
         }
       }
-
+    
       final foodData = await _getFoodDataForDate(today);
 
       final result = {
@@ -596,18 +620,27 @@ class _ProgressScreenState extends State<ProgressScreen> {
     required bool isCompleted,
     required String currentValue,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = isDark ? theme.colorScheme.primary : Palette.teal;
+    final baseInactive = isDark ? Colors.white60 : Colors.grey;
+    final titleColor =
+        isCompleted ? (isDark ? theme.colorScheme.onSurface : Palette.navy) : baseInactive;
+    final valueColor = isCompleted ? accent : baseInactive;
+    final iconColor = isCompleted ? accent : baseInactive;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          Icon(icon, color: isCompleted ? Palette.teal : Colors.grey, size: 20),
+          Icon(icon, color: iconColor, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
               style: TextStyle(
                 fontSize: 14,
-                color: isCompleted ? Palette.navy : Colors.grey,
+                color: titleColor,
                 fontWeight: isCompleted ? FontWeight.w500 : FontWeight.normal,
               ),
             ),
@@ -616,14 +649,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
             currentValue,
             style: TextStyle(
               fontSize: 12,
-              color: isCompleted ? Palette.teal : Colors.grey,
+              color: valueColor,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(width: 8),
           Icon(
             isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: isCompleted ? Palette.teal : Colors.grey,
+            color: iconColor,
             size: 16,
           ),
         ],
@@ -633,8 +666,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   Widget _buildDayTitles(double value, TitleMeta meta) {
     const days = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final style = TextStyle(
-      color: Palette.navy,
+      color: isDark ? Theme.of(context).colorScheme.onSurface : Palette.navy,
       fontSize: 12,
       fontWeight: value.toInt() == _currentDayOfWeek
           ? FontWeight.bold
@@ -659,12 +693,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
     required Color color,
   }) {
     return Card(
-      color: Palette.paper,
-      shadowColor: Palette.cardShadow.withOpacity(0.15),
+      color: _isDark ? _theme.cardColor : Palette.paper,
+      shadowColor:
+          (_isDark ? Colors.black : Palette.cardShadow).withOpacity(0.15),
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200, width: 1),
+        side: BorderSide(
+          color: _isDark ? Colors.white10 : Colors.grey.shade200,
+          width: 1,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -677,16 +715,21 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Palette.navy,
+                    color:
+                        _isDark ? _theme.colorScheme.onSurface : Palette.navy,
                   ),
                 ),
                 const Spacer(),
                 Text(
                   unit,
-                  style: const TextStyle(fontSize: 14, color: Palette.navy),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        _isDark ? _theme.colorScheme.onSurface : Palette.navy,
+                  ),
                 ),
               ],
             ),
@@ -754,6 +797,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   Widget _buildBarChart(Map<int, int> data, Color color, double maxY) {
     List<BarChartGroupData> barGroups = [];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     for (int i = 0; i < 7; i++) {
       final rawValue = data[i]?.toDouble() ?? 0.0;
@@ -765,7 +809,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
           barRods: [
             BarChartRodData(
               toY: cappedValue,
-              color: rawValue > 0 ? color : Colors.grey.withOpacity(0.3),
+              color: rawValue > 0
+                  ? color
+                  : (isDark ? Colors.white24 : Colors.grey.withOpacity(0.3)),
               width: 20,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),

@@ -20,10 +20,28 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int currentIndex = 0;
 
+  // NEW: keep pages alive across tab switches
+  late final List<Widget> _pages;
+
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+
+    // NEW: instantiate pages once
+    _pages = [
+      Dashboard(
+        onNavigate: (int index) {
+          setState(() {
+            currentIndex = index;
+          });
+        },
+      ),
+      const DailyPage(),
+      const FoodSavePage(),
+      const ProgressScreen(),
+      const UserProfilePage(),
+    ];
   }
 
   Future<void> _fetchUserData() async {
@@ -62,20 +80,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       displayName = userData['username'] ?? userData['email'] ?? 'User';
     }
 
-    final List<Widget> pages = [
-      Dashboard(
-        onNavigate: (int index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
-      ),
-      const DailyPage(),
-      const FoodSavePage(),
-      const ProgressScreen(),
-      const UserProfilePage(),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF79D7BE),
@@ -103,7 +107,11 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ],
       ),
-      body: pages[currentIndex],
+      // CHANGED: keep all pages alive; timers in DailyPage keep running
+      body: IndexedStack(
+        index: currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: _buildBottomNav(context),
     );
   }

@@ -53,7 +53,7 @@ class DailyPage extends StatefulWidget {
   State<DailyPage> createState() => _DailyPageState();
 }
 
-class _DailyPageState extends State<DailyPage> {
+class _DailyPageState extends State<DailyPage> with AutomaticKeepAliveClientMixin {
   // Date being viewed/edited
   DateTime _selectedDate = DateTime.now();
   bool _isSameDay(DateTime a, DateTime b) =>
@@ -268,6 +268,9 @@ class _DailyPageState extends State<DailyPage> {
     _stopSleepTicker(); // NEW: ensure ticker canceled
     super.dispose();
   }
+
+  @override
+  bool get wantKeepAlive => true; // NEW: keep this page alive
 
   // ---------- Optimistic Save + Undo ----------
   Future<void> _safeSave(
@@ -810,6 +813,7 @@ class _DailyPageState extends State<DailyPage> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
+    super.build(context); // NEW: required when using AutomaticKeepAliveClientMixin
     final dateText = DateFormat('EEE d MMM yyyy', 'th').format(_selectedDate);
     final appBarTitle = _isViewingToday ? 'วันนี้' : dateText;
 
