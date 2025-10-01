@@ -20,5 +20,18 @@ services:
       retries: 3
     restart: unless-stopped
 
+  backend:
+    image: personal-wellness-tracker-backend:latest
+    container_name: wellness_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://wellness_user:wellness_password@postgres:5432/wellness_tracker_db
+      - SECRET_KEY=your-secret-key-here-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:

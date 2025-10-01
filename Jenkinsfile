@@ -18,7 +18,12 @@ pipeline {
           apt-get update
           # ใช้ docker-cli พอ (เบากว่า docker.io) เพราะเราใช้ docker engine จากโฮสต์ผ่าน /var/run/docker.sock
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            git wget unzip ca-certificates docker-cli default-jre-headless
+            git wget unzip ca-certificates docker-cli default-jre-headless curl
+            
+          # Install docker-compose
+          curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
           command -v git
           command -v docker
@@ -182,35 +187,42 @@ EOF
       }
     }
 
-    stage('Build Docker Image') {
+    stage('Deploy with Docker Compose') {
       steps {
         dir('personal_wellness_tracker_backend') {
           sh '''
             set -eux
             
-            # Check if Dockerfile exists
-            if [ ! -f Dockerfile ]; then
-              echo "ERROR: Dockerfile not found in personal_wellness_tracker_backend directory"
-              exit 1
-            fi
-            
+            # Build Docker image ก่อน
             echo "Building Docker image..."
             docker build -t personal-wellness-tracker-backend:latest .
             
-            echo "Docker image built successfully!"
-            docker images | grep personal-wellness-tracker-backend
+            # หยุด containers เก่าทั้งหมด
+            echo "Stopping existing containers..."
+            docker-compose down || true
+            docker rm -f personal-wellness-tracker-backend || true
+            
+            # รัน services ทั้งหมดด้วย docker-compose
+            echo "Starting services with docker-compose..."
+            docker-compose up -d
+            
+            # รอให้ services พร้อม
+            echo "Waiting for services to be ready..."
+            sleep 20
+            
+            # ตรวจสอบสถานะ services
+            echo "Checking service status..."
+            docker-compose ps
+            
+            # แสดง logs ของ backend
+            echo "Backend logs:"
+            docker-compose logs backend --tail=10
+            
+            # ตรวจสอบว่า backend ตอบสนอง
+            echo "Testing backend connection..."
+            curl -f http://localhost:8000/ || curl -f http://localhost:8000/docs || echo "Backend may still be starting..."
           '''
         }
-      }
-    }
-
-    stage('Deploy Container') {
-      steps {
-        sh '''
-          set -eux
-          docker rm -f personal-wellness-tracker-backend || true
-          docker run -d --name personal-wellness-tracker-backend -p 8000:8000 personal-wellness-tracker-backend:latest
-        '''
       }
     }
   }
