@@ -10,10 +10,40 @@ class Palette {
   static const navy = Color(0xFF2E5077); // ข้อความ/ไอคอนหลัก
   static const teal = Color(0xFF4DA1A9); // ปุ่มหลัก/แอ็กเซนต์
   static const mint = Color(0xFF79D7BE); // พื้นหลังชิป/แทร็ก
-  static const paper = Color(
-    0xFFF8F9FA,
-  );
+  static const paper = Color(0xFFF8F9FA);
   static const cardShadow = Color(0xFF000000); // เงาการ์ด
+}
+
+// NEW: Theme adapter — keep Palette in light mode; use Theme in dark mode
+class _DPTheme {
+  final BuildContext context;
+  _DPTheme(this.context);
+
+  ThemeData get _t => Theme.of(context);
+  bool get isDark => _t.brightness == Brightness.dark;
+
+  Color get text =>
+      isDark ? (_t.textTheme.titleMedium?.color ?? Colors.white) : Palette.navy;
+  Color get primary =>
+      isDark ? _t.colorScheme.primary : Palette.teal;
+  Color get onPrimary =>
+      isDark ? _t.colorScheme.onPrimary : Colors.white;
+
+  Color get scaffoldBg => _t.scaffoldBackgroundColor;
+  Color get appBarBg => _t.appBarTheme.backgroundColor ?? _t.scaffoldBackgroundColor;
+  Color get appBarFg => _t.appBarTheme.foregroundColor ?? text;
+
+  Color get card =>
+      isDark ? _t.cardColor : Palette.paper;
+  Color get border =>
+      isDark ? _t.dividerColor.withOpacity(0.6) : Colors.grey.shade200;
+  Color get shadow =>
+      _t.shadowColor.withOpacity(0.12);
+
+  Color get trackBg =>
+      isDark ? Colors.white10 : Palette.mint.withOpacity(0.35);
+  Color chipBg([double o = 0.6]) =>
+      isDark ? _t.colorScheme.surfaceVariant.withOpacity(o) : Palette.mint.withOpacity(o);
 }
 
 class DailyPage extends StatefulWidget {
@@ -692,24 +722,23 @@ class _DailyPageState extends State<DailyPage> {
       initialDate: base,
       firstDate: now,
       lastDate: now.add(const Duration(days: 7)),
+      // CHANGED: use light custom theme only in light mode
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        if (isDark) return child!;
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF4DA1A9), // ปุ่ม OK / ปุ่มลูกศร / เส้นเน้น
-              onPrimary: Colors.white, // สีตัวอักษรบนปุ่ม OK
-              surface: Colors.white, // พื้นหลังหลักของปฏิทิน
-              onSurface: Color(0xFF2E5077), // ตัวเลขวันที่ + ข้อความ
+              primary: Color(0xFF4DA1A9),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF2E5077),
             ),
             datePickerTheme: DatePickerThemeData(
-              backgroundColor: Colors.white, // พื้นหลังของ Dialog
-              headerBackgroundColor: Color(
-                0xFF4DA1A9,
-              ), // พื้นหลังส่วนหัวเดือน/ปี
-              headerForegroundColor: Colors.white, // ตัวอักษรบนส่วนหัว
-              todayForegroundColor: WidgetStateProperty.all(
-                Color(0xFF2E5077),
-              ), // สีตัวเลขวันที่วันนี้
+              backgroundColor: Colors.white,
+              headerBackgroundColor: Color(0xFF4DA1A9),
+              headerForegroundColor: Colors.white,
+              todayForegroundColor: WidgetStateProperty.all(Color(0xFF2E5077)),
               weekdayStyle: const TextStyle(
                 color: Color(0xFF2E5077),
                 fontWeight: FontWeight.w600,
@@ -727,34 +756,32 @@ class _DailyPageState extends State<DailyPage> {
       context: context,
       initialTime: TimeOfDay.fromDateTime(base),
       initialEntryMode: TimePickerEntryMode.input,
+      // CHANGED: use light custom theme only in light mode
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        if (isDark) return child!;
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
           child: Theme(
             data: Theme.of(context).copyWith(
               colorScheme: ColorScheme.light(
-                primary: const Color(0xFF4DA1A9), // ปุ่ม OK/Cancel และเส้นเน้น
-                onPrimary: Colors.white, // ตัวอักษรบนปุ่ม
-                surface: Colors.white, // พื้นหลังหลักของ picker
-                onSurface: const Color(0xFF2E5077), // สีข้อความ/ไอคอน
+                primary: const Color(0xFF4DA1A9),
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: const Color(0xFF2E5077),
               ),
-
               timePickerTheme: TimePickerThemeData(
-                backgroundColor: Colors.white, // พื้นหลัง dialog
-
+                backgroundColor: Colors.white,
                 hourMinuteTextColor: const Color(0xFF2E5077),
                 hourMinuteShape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: const BorderSide(color: Color(0xFF4DA1A9), width: 3),
                 ),
                 hourMinuteColor: const Color(0xFFFFFFFF),
-
                 dialBackgroundColor: const Color.fromARGB(255, 224, 223, 223),
                 dialHandColor: const Color(0xFF4DA1A9),
                 dialTextColor: const Color(0xFF2E5077),
-
-                entryModeIconColor: const Color(0xFF4DA1A9), // ไอคอนสลับโหมด
-
+                entryModeIconColor: const Color(0xFF4DA1A9),
                 helpTextStyle: const TextStyle(
                   color: Color(0xFF2E5077),
                   fontWeight: FontWeight.bold,
@@ -784,10 +811,11 @@ class _DailyPageState extends State<DailyPage> {
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('EEE d MMM yyyy', 'th').format(_selectedDate);
-    // NEW: dynamic app bar title
     final appBarTitle = _isViewingToday ? 'วันนี้' : dateText;
 
-    // NEW: overlay visibility helpers (only for today)
+    // NEW: use theme-aware colors
+    final dp = _DPTheme(context);
+
     final bool exerciseOverlayVisible =
         _isViewingToday && _exerciseStopwatchOn && _exerciseStartAt != null;
     final bool sleepOverlayVisible =
@@ -797,25 +825,25 @@ class _DailyPageState extends State<DailyPage> {
         plannedWakeAt != null;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // CHANGED: use themed background
+      backgroundColor: dp.scaffoldBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        // CHANGED: use themed app bar colors
+        backgroundColor: dp.appBarBg,
         surfaceTintColor: Colors.transparent,
-        foregroundColor: Palette.navy,
-        title: Text(appBarTitle, style: const TextStyle(color: Palette.navy)),
+        foregroundColor: dp.appBarFg,
+        title: Text(appBarTitle, style: TextStyle(color: dp.appBarFg)),
         centerTitle: true,
         elevation: 0,
         shadowColor: Palette.cardShadow.withOpacity(0.1),
       ),
-      // NEW: Wrap body with Stack and render timer bar when running
       body: Stack(
         children: [
           RefreshIndicator(
-            color: Palette.teal,
-            backgroundColor: Colors.white,
+            color: dp.primary,
+            backgroundColor: dp.scaffoldBg,
             onRefresh: () => _loadFromApi(_selectedDate),
             child: ListView(
-              // NEW: dynamic bottom padding for overlays
               padding: EdgeInsets.fromLTRB(
                 16,
                 12,
@@ -827,17 +855,13 @@ class _DailyPageState extends State<DailyPage> {
               children: [
                 // Header ความคืบหน้า
                 Card(
-                  color: Palette.paper, // ใช้สีเทาอ่อนแทนสีขาว
-                  shadowColor: Palette.cardShadow.withOpacity(
-                    0.15,
-                  ), // เพิ่มความเข้มของเงา
-                  elevation: 3, // เพิ่ม elevation
+                  // CHANGED: theme-aware card
+                  color: dp.card,
+                  shadowColor: dp.shadow,
+                  elevation: 3,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: Colors.grey.shade200,
-                      width: 1,
-                    ), // เพิ่มขอบ
+                    side: BorderSide(color: dp.border, width: 1),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -852,16 +876,15 @@ class _DailyPageState extends State<DailyPage> {
                               child: CircularProgressIndicator(
                                 value: overallProgress,
                                 strokeWidth: 8,
-                                valueColor: const AlwaysStoppedAnimation(
-                                  Palette.teal,
-                                ),
-                                backgroundColor: Palette.mint.withOpacity(0.35),
+                                // CHANGED: theme-aware primary + track
+                                valueColor: AlwaysStoppedAnimation(dp.primary),
+                                backgroundColor: dp.trackBg,
                               ),
                             ),
                             Text(
                               '${(overallProgress * 100).round()}%',
-                              style: const TextStyle(
-                                color: Palette.navy,
+                              style: TextStyle(
+                                color: dp.text,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -880,8 +903,8 @@ class _DailyPageState extends State<DailyPage> {
                                   children: [
                                     Text(
                                       dateText,
-                                      style: const TextStyle(
-                                        color: Palette.navy,
+                                      style: TextStyle(
+                                        color: dp.text,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -893,21 +916,19 @@ class _DailyPageState extends State<DailyPage> {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFFFFFFFF,
-                                        ), // พื้นหลัง Mint
+                                        color: dp.isDark
+                                            ? dp.scaffoldBg
+                                            : const Color(0xFFFFFFFF),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: const Color(
-                                            0xFF4DA1A9,
-                                          ), // เส้นขอบ Teal
+                                          color: dp.primary,
                                           width: 2,
                                         ),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'สลับ',
                                         style: TextStyle(
-                                          color: Palette.navy,
+                                          color: dp.text,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                         ),
@@ -919,7 +940,7 @@ class _DailyPageState extends State<DailyPage> {
                                 Text(
                                   'จบไปแล้ว ${_doneCount()}/4 งาน',
                                   style: TextStyle(
-                                    color: Palette.navy.withOpacity(0.8),
+                                    color: dp.text.withOpacity(0.8),
                                   ),
                                 ),
                               ],
@@ -935,17 +956,12 @@ class _DailyPageState extends State<DailyPage> {
 
                 // Quick Actions
                 Card(
-                  color: Palette.paper, // ใช้สีเทาอ่อนแทนสีขาว
-                  shadowColor: Palette.cardShadow.withOpacity(
-                    0.15,
-                  ), // เพิ่มความเข้มของเงา
-                  elevation: 3, // เพิ่ม elevation
+                  color: dp.card,
+                  shadowColor: dp.shadow,
+                  elevation: 3,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: Colors.grey.shade200,
-                      width: 1,
-                    ), // เพิ่มขอบ
+                    side: BorderSide(color: dp.border, width: 1),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -968,13 +984,11 @@ class _DailyPageState extends State<DailyPage> {
                               : 'เริ่มจับเวลา',
                           onTap: _toggleExerciseTimer,
                         ),
-                        // Change: keep only "เริ่มนอน" and prompt for wake time
                         _QuickAction(
                           icon: Icons.bedtime,
                           label: 'เริ่มนอน',
                           onTap: _startSleepPlannedFlow,
                         ),
-                        // Removed the "ตื่น" quick action
                       ],
                     ),
                   ),
@@ -989,7 +1003,7 @@ class _DailyPageState extends State<DailyPage> {
                   progress: waterProgress,
                   trailing: Text(
                     '$waterCups/$waterGoalCups แก้ว',
-                    style: const TextStyle(color: Palette.navy),
+                    style: TextStyle(color: _DPTheme(context).text),
                   ),
                   onTap: () => showQuickBottomSheet(
                     context,
@@ -1021,7 +1035,7 @@ class _DailyPageState extends State<DailyPage> {
                   progress: exerciseProgress,
                   trailing: Text(
                     '${exerciseMinutes}${exerciseGoalMinutes > 0 ? "/$exerciseGoalMinutes" : ""}นาที${exerciseType.isNotEmpty ? " • $exerciseType" : ""}',
-                    style: const TextStyle(color: Palette.navy),
+                    style: TextStyle(color: _DPTheme(context).text),
                   ),
                   onTap: _openExerciseSheet,
                 ),
@@ -1032,9 +1046,9 @@ class _DailyPageState extends State<DailyPage> {
                   progress: sleepProgress,
                   trailing: Text(
                     _sleepText(),
-                    style: const TextStyle(color: Palette.navy),
+                    style: TextStyle(color: _DPTheme(context).text),
                   ),
-                  onTap: _openSleepOptions, // CHANGED: open sleep options
+                  onTap: _openSleepOptions,
                 ),
 
                 HabitCard(
@@ -1043,7 +1057,7 @@ class _DailyPageState extends State<DailyPage> {
                   progress: moodEmoji == null ? 0 : 1,
                   trailing: Text(
                     moodEmoji ?? 'ยังไม่บันทึก',
-                    style: const TextStyle(color: Palette.navy),
+                    style: TextStyle(color: _DPTheme(context).text),
                   ),
                   onTap: () => showQuickBottomSheet(
                     context,
@@ -1057,7 +1071,6 @@ class _DailyPageState extends State<DailyPage> {
               ],
             ),
           ),
-          // Existing exercise timer overlay
           if (exerciseOverlayVisible)
             Positioned(
               left: 16,
@@ -1069,8 +1082,6 @@ class _DailyPageState extends State<DailyPage> {
                 onStop: _toggleExerciseTimer,
               ),
             ),
-
-          // NEW: Sleep countdown overlay; stack above exercise if both shown
           if (sleepOverlayVisible)
             Positioned(
               left: 16,
@@ -1080,7 +1091,6 @@ class _DailyPageState extends State<DailyPage> {
                 remaining: plannedWakeAt!.difference(DateTime.now()),
                 planned: plannedWakeAt!,
                 onEdit: _editPlannedWake,
-                // CHANGED: always allow pressing; finalize with "now"
                 onWakeNow: () => _finalizePlannedWake(DateTime.now()),
               ),
             ),
@@ -1126,7 +1136,10 @@ class _DailyPageState extends State<DailyPage> {
       initialDate: _selectedDate,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 30)),
+      // CHANGED: use light custom theme only in light mode
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        if (isDark) return child!;
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -1146,7 +1159,7 @@ class _DailyPageState extends State<DailyPage> {
               ),
               dayStyle: const TextStyle(color: Color(0xFF2E5077)),
             ),
-          ),         
+          ),
           child: child!,
         );
       },
@@ -1180,13 +1193,14 @@ class HabitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     return Card(
-      color: Palette.paper, // ใช้สีเทาอ่อนแทนสีขาว
-      shadowColor: Palette.cardShadow.withOpacity(0.15), // เพิ่มความเข้มของเงา
-      elevation: 3, // เพิ่ม elevation
+      color: dp.card,
+      shadowColor: dp.shadow,
+      elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200, width: 1), // เพิ่มขอบ
+        side: BorderSide(color: dp.border, width: 1),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -1204,28 +1218,28 @@ class HabitCard extends StatelessWidget {
                     child: CircularProgressIndicator(
                       value: progress.clamp(0, 1),
                       strokeWidth: 6,
-                      valueColor: const AlwaysStoppedAnimation(Palette.teal),
-                      backgroundColor: Palette.mint.withOpacity(0.35),
+                      valueColor: AlwaysStoppedAnimation(dp.primary),
+                      backgroundColor: dp.trackBg,
                     ),
                   ),
-                  const Icon(Icons.circle, size: 0), // spacer
                   const Icon(Icons.circle, size: 0),
-                  Icon(icon, size: 22, color: Palette.navy),
+                  const Icon(Icons.circle, size: 0),
+                  Icon(icon, size: 22, color: dp.text),
                 ],
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Palette.navy,
+                  style: TextStyle(
+                    color: dp.text,
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
                   ),
                 ),
               ),
               DefaultTextStyle.merge(
-                style: const TextStyle(color: Palette.navy),
+                style: TextStyle(color: dp.text),
                 child: trailing,
               ),
             ],
@@ -1249,33 +1263,28 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     return ActionChip(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Palette.teal.withOpacity(0.8),
-          width: 1.5,
-        ), // เพิ่มความเข้มของขอบ
+        side: BorderSide(color: dp.primary.withOpacity(0.8), width: 1.5),
       ),
-      avatar: Icon(icon, size: 18, color: Palette.navy),
-      backgroundColor: Palette.mint.withOpacity(
-        0.6,
-      ), // เพิ่มความเข้มของพื้นหลัง
+      avatar: Icon(icon, size: 18, color: dp.text),
+      backgroundColor: dp.chipBg(0.6),
       label: Text(
         label,
-        style: const TextStyle(
-          color: Palette.navy,
+        style: TextStyle(
+          color: dp.text,
           fontWeight: FontWeight.w600,
         ),
       ),
       onPressed: onTap,
-      elevation: 2, // เพิ่ม elevation
-      shadowColor: Palette.cardShadow.withOpacity(0.1),
+      elevation: 2,
+      shadowColor: dp.shadow,
     );
   }
 }
 
-// NEW: Minimal, well-organized exercise timer overlay bar
 class _ExerciseTimerBar extends StatelessWidget {
   final Duration elapsed;
   final VoidCallback onEdit;
@@ -1297,6 +1306,7 @@ class _ExerciseTimerBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     return SafeArea(
       top: false,
       child: Material(
@@ -1306,12 +1316,12 @@ class _ExerciseTimerBar extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: Palette.paper,
+            color: dp.card,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
+            border: Border.all(color: dp.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Palette.cardShadow.withOpacity(0.12),
+                color: dp.shadow,
                 blurRadius: 10,
                 offset: const Offset(0, 6),
               ),
@@ -1319,14 +1329,14 @@ class _ExerciseTimerBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.timer, color: Palette.navy, size: 20),
+              Icon(Icons.timer, color: dp.text, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   _fmt(elapsed),
                   textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: Palette.navy,
+                  style: TextStyle(
+                    color: dp.text,
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
@@ -1339,11 +1349,8 @@ class _ExerciseTimerBar extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   shape: const CircleBorder(),
                   minimumSize: const Size(40, 40),
-                  side: BorderSide(
-                    color: Palette.teal.withOpacity(0.6),
-                    width: 1,
-                  ),
-                  foregroundColor: Palette.navy,
+                  side: BorderSide(color: dp.primary.withOpacity(0.6), width: 1),
+                  foregroundColor: dp.text,
                   padding: EdgeInsets.zero,
                 ),
                 child: const Icon(Icons.edit, size: 18),
@@ -1353,8 +1360,8 @@ class _ExerciseTimerBar extends StatelessWidget {
               FilledButton(
                 onPressed: onStop,
                 style: FilledButton.styleFrom(
-                  backgroundColor: Palette.teal,
-                  foregroundColor: Colors.white,
+                  backgroundColor: dp.primary,
+                  foregroundColor: dp.onPrimary,
                   shape: const CircleBorder(),
                   minimumSize: const Size(44, 44),
                   padding: EdgeInsets.zero,
@@ -1369,7 +1376,6 @@ class _ExerciseTimerBar extends StatelessWidget {
   }
 }
 
-// NEW: Sleep countdown bar (minimal, similar to exercise bar)
 class _SleepCountdownBar extends StatelessWidget {
   final Duration remaining;
   final DateTime planned;
@@ -1398,6 +1404,7 @@ class _SleepCountdownBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     final due = remaining <= Duration.zero;
     final plannedText = DateFormat('d MMM HH:mm', 'th').format(planned);
 
@@ -1410,12 +1417,12 @@ class _SleepCountdownBar extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: Palette.paper,
+            color: dp.card,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
+            border: Border.all(color: dp.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Palette.cardShadow.withOpacity(0.12),
+                color: dp.shadow,
                 blurRadius: 10,
                 offset: const Offset(0, 6),
               ),
@@ -1423,18 +1430,16 @@ class _SleepCountdownBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.bedtime, color: Palette.navy, size: 20),
+              Icon(Icons.bedtime, color: dp.text, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      due
-                          ? 'ถึงเวลาตื่นแล้ว'
-                          : 'เหลือเวลา ${_fmtDur(remaining)}',
-                      style: const TextStyle(
-                        color: Palette.navy,
+                      due ? 'ถึงเวลาตื่นแล้ว' : 'เหลือเวลา ${_fmtDur(remaining)}',
+                      style: TextStyle(
+                        color: dp.text,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
@@ -1443,7 +1448,7 @@ class _SleepCountdownBar extends StatelessWidget {
                     Text(
                       'ตื่น $plannedText',
                       style: TextStyle(
-                        color: Palette.navy.withOpacity(0.8),
+                        color: dp.text.withOpacity(0.8),
                         fontSize: 12,
                       ),
                     ),
@@ -1455,11 +1460,8 @@ class _SleepCountdownBar extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   shape: const CircleBorder(),
                   minimumSize: const Size(40, 40),
-                  side: BorderSide(
-                    color: Palette.teal.withOpacity(0.6),
-                    width: 1,
-                  ),
-                  foregroundColor: Palette.navy,
+                  side: BorderSide(color: dp.primary.withOpacity(0.6), width: 1),
+                  foregroundColor: dp.text,
                   padding: EdgeInsets.zero,
                 ),
                 child: const Icon(Icons.edit, size: 18),
@@ -1469,8 +1471,8 @@ class _SleepCountdownBar extends StatelessWidget {
               FilledButton(
                 onPressed: onWakeNow,
                 style: FilledButton.styleFrom(
-                  backgroundColor: Palette.teal,
-                  foregroundColor: Colors.white,
+                  backgroundColor: dp.primary,
+                  foregroundColor: dp.onPrimary,
                   shape: const StadiumBorder(),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1490,10 +1492,14 @@ class _SleepCountdownBar extends StatelessWidget {
 // --------------------- BottomSheet Helper --------------------------
 
 Future<void> showQuickBottomSheet(BuildContext context, Widget child) {
+  final theme = Theme.of(context);
+  final bgColor = theme.brightness == Brightness.dark
+      ? theme.cardColor // dark mode: use card surface (not pure black)
+      : Colors.white;  
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: bgColor,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -1552,14 +1558,15 @@ class _WaterSheetState extends State<WaterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final presets = [1, 2, 3]; // เพิ่มทีละ 1/2/3 แก้ว
+    final dp = _DPTheme(context);
+    final presets = [1, 2, 3];
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          'น้ำดื่มวันนี้ (250 ml / แก้ว)',
+        Text(
+          'ดื่มน้ำวันนี้ (250 ml / แก้ว)',
           style: TextStyle(
-            color: Palette.navy,
+            color: dp.text,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
@@ -1567,15 +1574,12 @@ class _WaterSheetState extends State<WaterSheet> {
         const SizedBox(height: 8),
         Text(
           '${widget.currentCups}/${widget.goalCups} แก้ว',
-          style: TextStyle(color: Palette.navy.withOpacity(0.9)),
+          style: TextStyle(color: dp.text.withOpacity(0.9)),
         ),
-
         const SizedBox(height: 14),
-
-        // CHANGED: single centered numeric input (no +/- buttons)
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('จำนวนแก้ววันนี้', style: const TextStyle(color: Palette.navy)),
+          child: Text('จำนวนแก้ววันนี้', style: TextStyle(color: dp.text)),
         ),
         const SizedBox(height: 6),
         Center(
@@ -1587,8 +1591,8 @@ class _WaterSheetState extends State<WaterSheet> {
               textAlign: TextAlign.center,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(
-                color: Palette.navy,
+              style: TextStyle(
+                color: dp.text,
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
               ),
@@ -1598,20 +1602,17 @@ class _WaterSheetState extends State<WaterSheet> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Palette.teal, width: 2),
+                  borderSide: BorderSide(color: dp.primary, width: 2),
                 ),
                 suffixText: 'แก้ว',
               ),
             ),
           ),
         ),
-
         const SizedBox(height: 14),
-
-        // ปุ่มเพิ่มแก้ว
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('เพิ่มจำนวน', style: TextStyle(color: Palette.navy.withOpacity(0.9))),
+          child: Text('เพิ่มจำนวน', style: TextStyle(color: dp.text.withOpacity(0.9))),
         ),
         const SizedBox(height: 6),
         Wrap(
@@ -1620,15 +1621,12 @@ class _WaterSheetState extends State<WaterSheet> {
           children: presets
               .map(
                 (c) => ActionChip(
-                  backgroundColor: Palette.mint.withOpacity(0.5),
+                  backgroundColor: dp.chipBg(0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Palette.teal.withOpacity(0.6)),
+                    side: BorderSide(color: dp.primary.withOpacity(0.6)),
                   ),
-                  label: Text(
-                    '+${c} แก้ว',
-                    style: const TextStyle(color: Palette.navy),
-                  ),
+                  label: Text('+${c} แก้ว', style: TextStyle(color: dp.text)),
                   onPressed: () => widget.onAddCups(c),
                   elevation: 0,
                 ),
@@ -1636,11 +1634,9 @@ class _WaterSheetState extends State<WaterSheet> {
               .toList(),
         ),
         const SizedBox(height: 8),
-
-        // ปุ่มลดแก้ว
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('ลดจำนวน', style: TextStyle(color: Palette.navy.withOpacity(0.9))),
+          child: Text('ลดจำนวน', style: TextStyle(color: dp.text.withOpacity(0.9))),
         ),
         const SizedBox(height: 6),
         Wrap(
@@ -1649,31 +1645,25 @@ class _WaterSheetState extends State<WaterSheet> {
           children: presets
               .map(
                 (c) => ActionChip(
-                  backgroundColor: Palette.mint.withOpacity(0.35),
+                  backgroundColor: dp.chipBg(0.35),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Palette.teal.withOpacity(0.4)),
+                    side: BorderSide(color: dp.primary.withOpacity(0.4)),
                   ),
-                  label: Text(
-                    '-${c} แก้ว',
-                    style: const TextStyle(color: Palette.navy),
-                  ),
+                  label: Text('-${c} แก้ว', style: TextStyle(color: dp.text)),
                   onPressed: () => widget.onAddCups(-c),
                   elevation: 0,
                 ),
               )
               .toList(),
         ),
-
         const SizedBox(height: 16),
-
-        // CHANGED: full-width Save button
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: Palette.teal,
-              foregroundColor: Colors.white,
+              backgroundColor: dp.primary,
+              foregroundColor: dp.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1730,13 +1720,14 @@ class _MoodSheetState extends State<MoodSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
+        Text(
           'วันนี้รู้สึกยังไง?',
           style: TextStyle(
-            color: Palette.navy,
+            color: dp.text,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
@@ -1758,8 +1749,8 @@ class _MoodSheetState extends State<MoodSheet> {
         const SizedBox(height: 20),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: Palette.teal,
-            foregroundColor: Colors.white,
+            backgroundColor: dp.primary,
+            foregroundColor: dp.onPrimary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -1853,6 +1844,7 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     // Quick presets for minutes
     final presetMinutes = [15, 30, 45, 60];
 
@@ -1860,10 +1852,10 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'ออกกำลังกายวันนี้',
             style: TextStyle(
-              color: Palette.navy,
+              color: dp.text,
               fontWeight: FontWeight.w700,
               fontSize: 16,
             ),
@@ -1872,14 +1864,11 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
 
           // Section: ประเภท
           Row(
-            children: const [
-              Icon(Icons.category, color: Palette.navy, size: 18),
-              SizedBox(width: 6),
+            children: [
+              Icon(Icons.category, color: dp.text, size: 18),
+              const SizedBox(width: 6),
               Text('ประเภทการออกกำลังกาย',
-                  style: TextStyle(
-                    color: Palette.navy,
-                    fontWeight: FontWeight.w700,
-                  )),
+                  style: TextStyle(color: dp.text, fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1903,15 +1892,15 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  style: const TextStyle(color: Palette.navy),
+                  style: TextStyle(color: dp.text),
                 ),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: _addCustomType,
                 style: FilledButton.styleFrom(
-                  backgroundColor: Palette.teal,
-                  foregroundColor: Colors.white,
+                  backgroundColor: dp.primary,
+                  foregroundColor: dp.onPrimary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -1927,30 +1916,27 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _types
-                .map(
-                  (t) => ChoiceChip(
-                    label: Text(t,
-                        style: const TextStyle(color: Palette.navy)),
-                    selected: _type == t,
-                    selectedColor: Palette.teal.withOpacity(0.8),
-                    backgroundColor: Palette.mint.withOpacity(0.4),
-                    onSelected: (_) => setState(() => _type = t),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        color: (_type == t)
-                            ? Palette.teal
-                            : Palette.teal.withOpacity(0.4),
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelStyle: TextStyle(
-                      color: (_type == t) ? Colors.white : Palette.navy,
-                      fontWeight: FontWeight.w600,
-                    ),
+            children: _types.map((t) {
+              final selected = _type == t;
+              return ChoiceChip(
+                label: Text(t,
+                    style: TextStyle(color: selected ? Colors.white : dp.text)),
+                selected: selected,
+                selectedColor: dp.primary.withOpacity(0.8),
+                backgroundColor: _DPTheme(context).chipBg(0.4),
+                onSelected: (_) => setState(() => _type = t),
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(
+                    color: selected ? dp.primary : dp.primary.withOpacity(0.4),
                   ),
-                )
-                .toList(),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                labelStyle: TextStyle(
+                  color: selected ? Colors.white : dp.text,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            }).toList(),
           ),
 
           const SizedBox(height: 16),
@@ -1959,14 +1945,11 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
 
           // Section: ระยะเวลา
           Row(
-            children: const [
-              Icon(Icons.timer, color: Palette.navy, size: 18),
-              SizedBox(width: 6),
+            children: [
+              Icon(Icons.timer, color: dp.text, size: 18),
+              const SizedBox(width: 6),
               Text('ระยะเวลา',
-                  style: TextStyle(
-                    color: Palette.navy,
-                    fontWeight: FontWeight.w700,
-                  )),
+                  style: TextStyle(color: dp.text, fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1994,10 +1977,10 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: const TextStyle(color: Palette.navy),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: dp.text),
+                  decoration: InputDecoration(
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                     border: OutlineInputBorder(),
                     suffixText: 'นาที',
                   ),
@@ -2023,27 +2006,23 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: presetMinutes
-                  .map(
-                    (m) => ActionChip(
-                      label: Text('$m นาที',
-                          style: const TextStyle(color: Palette.navy)),
-                      backgroundColor: Palette.mint.withOpacity(0.45),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                            color: Palette.teal.withOpacity(0.6), width: 1),
-                      ),
-                      onPressed: () {
-                        setState(() => _minutes = m);
-                        _minutesCtrl.text = '$_minutes';
-                        _minutesCtrl.selection = TextSelection.collapsed(
-                          offset: _minutesCtrl.text.length,
-                        );
-                      },
-                    ),
-                  )
-                  .toList(),
+              children: presetMinutes.map((m) {
+                return ActionChip(
+                  label: Text('$m นาที', style: TextStyle(color: dp.text)),
+                  backgroundColor: _DPTheme(context).chipBg(0.45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: dp.primary.withOpacity(0.6), width: 1),
+                  ),
+                  onPressed: () {
+                    setState(() => _minutes = m);
+                    _minutesCtrl.text = '$_minutes';
+                    _minutesCtrl.selection = TextSelection.collapsed(
+                      offset: _minutesCtrl.text.length,
+                    );
+                  },
+                );
+              }).toList(),
             ),
           ),
 
@@ -2054,13 +2033,12 @@ class _ExerciseSheetState extends State<ExerciseSheet> {
             width: double.infinity,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: Palette.teal,
-                foregroundColor: Colors.white,
+                backgroundColor: dp.primary,
+                foregroundColor: dp.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
               onPressed: () {
                 widget.onSubmit(_type, _minutes);
@@ -2117,7 +2095,10 @@ class _SleepSheetState extends State<SleepSheet> {
       initialDate: base,
       firstDate: now.subtract(const Duration(days: 7)),
       lastDate: now.add(const Duration(days: 1)),
+      // CHANGED: use light custom theme only in light mode
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        if (isDark) return child!;
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
@@ -2137,6 +2118,8 @@ class _SleepSheetState extends State<SleepSheet> {
       context: context,
       initialTime: TimeOfDay.fromDateTime(base),
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        if (isDark) return child!;
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
           child: Theme(
@@ -2182,16 +2165,17 @@ class _SleepSheetState extends State<SleepSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     final mins = (_s != null && _e != null) ? _e!.difference(_s!).inMinutes : 0;
     final h = mins ~/ 60, m = mins % 60;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
+        Text(
           'การนอน',
           style: TextStyle(
-            color: Palette.navy,
+            color: dp.text,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
@@ -2202,13 +2186,13 @@ class _SleepSheetState extends State<SleepSheet> {
             Expanded(
               child: Text(
                 'เริ่ม: ${_fmt(_s)}',
-                style: const TextStyle(color: Palette.navy),
+                style: TextStyle(color: dp.text),
               ),
             ),
             TextButton.icon(
               onPressed: () => _pickDateTime(isStart: true),
               icon: const Icon(Icons.edit_calendar, color: Palette.navy),
-              label: const Text('แก้ไข', style: TextStyle(color: Palette.navy)),
+              label: Text('แก้ไข', style: TextStyle(color: dp.text)),
             ),
           ],
         ),
@@ -2217,20 +2201,20 @@ class _SleepSheetState extends State<SleepSheet> {
             Expanded(
               child: Text(
                 'ตื่น: ${_fmt(_e)}',
-                style: const TextStyle(color: Palette.navy),
+                style: TextStyle(color: dp.text),
               ),
             ),
             TextButton.icon(
               onPressed: () => _pickDateTime(isStart: false),
               icon: const Icon(Icons.edit_calendar, color: Palette.navy),
-              label: const Text('แก้ไข', style: TextStyle(color: Palette.navy)),
+              label: Text('แก้ไข', style: TextStyle(color: dp.text)),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
           'รวม: ${h}ชม ${m}นาที',
-          style: const TextStyle(color: Palette.navy),
+          style: TextStyle(color: dp.text),
         ),
         Row(
           children: [
@@ -2238,10 +2222,10 @@ class _SleepSheetState extends State<SleepSheet> {
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: Palette.teal,
-                  inactiveTrackColor: Palette.mint.withOpacity(0.5),
-                  thumbColor: Palette.teal,
-                  overlayColor: Palette.teal.withOpacity(0.15),
+                  activeTrackColor: dp.primary,
+                  inactiveTrackColor: _DPTheme(context).chipBg(0.5),
+                  thumbColor: dp.primary,
+                  overlayColor: dp.primary.withOpacity(0.15),
                 ),
                 child: Slider(
                   value: _q.toDouble(),
@@ -2258,8 +2242,8 @@ class _SleepSheetState extends State<SleepSheet> {
         const SizedBox(height: 8),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: Palette.teal,
-            foregroundColor: Colors.white,
+            backgroundColor: dp.primary,
+            foregroundColor: dp.onPrimary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -2275,7 +2259,7 @@ class _SleepSheetState extends State<SleepSheet> {
   }
 }
 
-// NEW: Sleep options chooser sheet
+// NEW: Sleep options chooser sheet — theme-aware
 class _SleepModeChooserSheet extends StatelessWidget {
   final VoidCallback onStartTimer;
   final VoidCallback onQuickLog;
@@ -2287,32 +2271,33 @@ class _SleepModeChooserSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
+        Text(
           'บันทึกการนอน',
           style: TextStyle(
-            color: Palette.navy,
+            color: dp.text,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
         ),
         const SizedBox(height: 12),
         ListTile(
-          leading: const Icon(Icons.play_circle_fill, color: Palette.navy),
-          title: const Text('จับเวลาการนอน', style: TextStyle(color: Palette.navy)),
-          subtitle: const Text('เลือกเวลาตื่นล่วงหน้าแล้วเริ่มนอน',
-              style: TextStyle(color: Palette.navy)),
+          leading: Icon(Icons.play_circle_fill, color: dp.text),
+          title: Text('จับเวลาการนอน', style: TextStyle(color: dp.text)),
+          subtitle: Text('เลือกเวลาตื่นล่วงหน้าแล้วเริ่มนอน',
+              style: TextStyle(color: dp.text)),
           onTap: onStartTimer,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         const SizedBox(height: 6),
         ListTile(
-          leading: const Icon(Icons.schedule, color: Palette.navy),
-          title: const Text('กรอกจำนวนชั่วโมงด้วยตัวเอง', style: TextStyle(color: Palette.navy)),
-          subtitle: const Text('ระบุจำนวนชั่วโมงที่นอนแล้วบันทึกทันที',
-              style: TextStyle(color: Palette.navy)),
+          leading: Icon(Icons.schedule, color: dp.text),
+          title: Text('กรอกจำนวนชั่วโมงด้วยตัวเอง', style: TextStyle(color: dp.text)),
+          subtitle: Text('ระบุจำนวนชั่วโมงที่นอนแล้วบันทึกทันที',
+              style: TextStyle(color: dp.text)),
           onTap: onQuickLog,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -2321,7 +2306,7 @@ class _SleepModeChooserSheet extends StatelessWidget {
   }
 }
 
-// NEW: Manual hours input sheet
+// NEW: Manual hours input sheet — theme-aware
 class _ManualSleepHoursSheet extends StatefulWidget {
   final double initialHours;
   final void Function(double hours) onSave;
@@ -2376,15 +2361,16 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final dp = _DPTheme(context);
     final quicks = <double>[6, 7, 8, 9];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
+        Text(
           'กรอกจำนวนชั่วโมงที่นอน',
           style: TextStyle(
-            color: Palette.navy,
+            color: dp.text,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
@@ -2401,8 +2387,8 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}')),
           ],
           onChanged: (_) => _syncFromText(),
-          style: const TextStyle(
-            color: Palette.navy,
+          style: TextStyle(
+            color: dp.text,
             fontWeight: FontWeight.w700,
             fontSize: 22,
           ),
@@ -2414,7 +2400,7 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Palette.teal, width: 2),
+              borderSide: BorderSide(color: dp.primary, width: 2),
             ),
           ),
         ),
@@ -2424,11 +2410,11 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
         // Slider
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor: Palette.teal,
-            inactiveTrackColor: Palette.mint.withOpacity(0.5),
-            thumbColor: Palette.teal,
-            overlayColor: Palette.teal.withOpacity(0.15),
-            valueIndicatorColor: Palette.teal,
+            activeTrackColor: dp.primary,
+            inactiveTrackColor: _DPTheme(context).chipBg(0.5),
+            thumbColor: dp.primary,
+            overlayColor: dp.primary.withOpacity(0.15),
+            valueIndicatorColor: dp.primary,
             valueIndicatorTextStyle: const TextStyle(color: Colors.white),
           ),
           child: Slider(
@@ -2441,7 +2427,6 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
           ),
         ),
 
-        // Quick chips
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -2450,16 +2435,16 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
             return ChoiceChip(
               label: Text('${v.toStringAsFixed(0)} ชม.',
                   style: TextStyle(
-                    color: sel ? Colors.white : Palette.navy,
+                    color: sel ? Colors.white : dp.text,
                     fontWeight: FontWeight.w600,
                   )),
               selected: sel,
-              selectedColor: Palette.teal,
-              backgroundColor: Palette.mint.withOpacity(0.45),
+              selectedColor: dp.primary,
+              backgroundColor: _DPTheme(context).chipBg(0.45),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
-                  color: sel ? Palette.teal : Palette.teal.withOpacity(0.5),
+                  color: sel ? dp.primary : dp.primary.withOpacity(0.5),
                 ),
               ),
               onSelected: (_) => _setHours(v),
@@ -2470,20 +2455,19 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
         const SizedBox(height: 8),
         Text(
           'แนะนำ: 6-8 ชม.',
-          style: TextStyle(color: Palette.navy.withOpacity(0.7), fontSize: 12),
+          style: TextStyle(color: dp.text.withOpacity(0.7), fontSize: 12),
         ),
 
         const SizedBox(height: 14),
 
-        // Save
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
             icon: const Icon(Icons.check),
             label: const Text('บันทึก'),
             style: FilledButton.styleFrom(
-              backgroundColor: Palette.teal,
-              foregroundColor: Colors.white,
+              backgroundColor: dp.primary,
+              foregroundColor: dp.onPrimary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
@@ -2494,4 +2478,5 @@ class _ManualSleepHoursSheetState extends State<_ManualSleepHoursSheet> {
     );
   }
 }
+
 

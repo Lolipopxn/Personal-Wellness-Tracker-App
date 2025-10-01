@@ -2,6 +2,30 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../app/daily_task_api.dart';
 
+  // NEW: Theme adapter for Dashboard (light keeps current palette; dark uses Theme)
+class _DBTheme {
+    final BuildContext context;
+    _DBTheme(this.context);
+
+    ThemeData get _t => Theme.of(context);
+    bool get isDark => _t.brightness == Brightness.dark;
+
+    Color get text =>
+        isDark ? (_t.textTheme.titleMedium?.color ?? Colors.white) : _DashboardState.kPrimary;
+    Color get primary =>
+        isDark ? _t.colorScheme.primary : _DashboardState.kTeal;
+
+    Color get card =>
+        isDark ? _t.cardColor : _DashboardState.kWhite;
+    Color get border =>
+        isDark ? _t.dividerColor.withOpacity(0.35) : _DashboardState.kMint.withOpacity(0.25);
+    Color get shadow =>
+        isDark ? Colors.black.withOpacity(0.2) : _DashboardState.kMint.withOpacity(0.15);
+
+    Color get subtleBg =>
+        isDark ? Colors.white10 : Colors.grey[200]!;
+}
+
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key, required this.onNavigate});
   final void Function(int index) onNavigate;
@@ -584,7 +608,7 @@ class _DashboardState extends State<Dashboard> {
     _exerciseMinutesToday = 0;
   }
 
-  // --- Updated: progress row styling to match palette ---
+  // --- Updated: progress row styling to be theme-aware ---
   Widget _buildProgressRow({
     required IconData icon,
     required Color color,
@@ -594,18 +618,19 @@ class _DashboardState extends State<Dashboard> {
     required double goal,
     bool isTablet = false,
   }) {
+    final dp = _DBTheme(context);
     final clampedGoal = goal <= 0 ? 1.0 : goal;
     final progress = (current / clampedGoal).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: kWhite,
+        color: dp.card, // CHANGED
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: kMint.withOpacity(0.25), width: 1),
+        border: Border.all(color: dp.border, width: 1), // CHANGED
         boxShadow: [
           BoxShadow(
-            color: kMint.withOpacity(0.15),
+            color: dp.shadow, // CHANGED
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -629,19 +654,19 @@ class _DashboardState extends State<Dashboard> {
               spacing: 12,
               children: [
                 Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: isTablet ? 22 : 20),
                 ),
-                child: Icon(icon, color: color, size: isTablet ? 22 : 20),
-              ),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
-                      color: kPrimary,
+                      color: dp.text, // CHANGED
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -651,7 +676,7 @@ class _DashboardState extends State<Dashboard> {
                   style: TextStyle(
                     fontSize: isTablet ? 16 : 14,
                     fontWeight: FontWeight.w800,
-                    color: kPrimary,
+                    color: dp.text, // CHANGED
                   ),
                 ),
               ],
@@ -660,13 +685,12 @@ class _DashboardState extends State<Dashboard> {
 
           const SizedBox(height: 10),
 
-          // Progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 10,
-              backgroundColor: Colors.grey[200],
+              backgroundColor: dp.subtleBg, // CHANGED
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -677,164 +701,166 @@ class _DashboardState extends State<Dashboard> {
 
   // --- Added: gradient header with streak progress ---
   Widget _buildHeaderCard({
-  required bool isTablet,
-  required String name,
-  required double streakProgress,
-  required int savedDays,
-  required int totalDays,
-  VoidCallback? onPressGoal,
-}) {
-  final double titleSize = isTablet ? 26 : 22;
-  final double subTitleSize = isTablet ? 18 : 16;
-  final double buttonFont = isTablet ? 16 : 14;
-  final double hPad = isTablet ? 24 : 18;
-  final double vPad = isTablet ? 24 : 18;
+    required bool isTablet,
+    required String name,
+    required double streakProgress,
+    required int savedDays,
+    required int totalDays,
+    VoidCallback? onPressGoal,
+  }) {
+    final dp = _DBTheme(context); // NEW
+    final double titleSize = isTablet ? 26 : 22;
+    final double subTitleSize = isTablet ? 18 : 16;
+    final double buttonFont = isTablet ? 16 : 14;
+    final double hPad = isTablet ? 24 : 18;
+    final double vPad = isTablet ? 24 : 18;
 
-  final progress = streakProgress.clamp(0.0, 1.0);
+    final progress = streakProgress.clamp(0.0, 1.0);
 
-  return Semantics(
-    container: true,
-    label: 'การ์ดหัวหน้าแดชบอร์ด',
-    child: Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [kTeal, kMint],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: kMint.withOpacity(0.28),
-            blurRadius: 14,
-            spreadRadius: 1,
-            offset: const Offset(0, 8),
+    return Semantics(
+      container: true,
+      label: 'การ์ดหัวหน้าแดชบอร์ด',
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [kTeal, kMint],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Greeting
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'สวัสดี, $name',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: kWhite,
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                        letterSpacing: 0.2,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: kMint.withOpacity(0.28),
+              blurRadius: 14,
+              spreadRadius: 1,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Greeting
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'สวัสดี, $name',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: kWhite,
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          letterSpacing: 0.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'ติดตามสุขภาพของคุณทุกวัน',
-                      style: TextStyle(
-                        color: kWhite.withOpacity(0.92),
-                        fontSize: subTitleSize,
-                        fontWeight: FontWeight.w600,
-                        height: 1.2,
+                      const SizedBox(height: 4),
+                      Text(
+                        'ติดตามสุขภาพของคุณทุกวัน',
+                        style: TextStyle(
+                          color: kWhite.withOpacity(0.92),
+                          fontSize: subTitleSize,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              // Goal button (optional)
-              if (onPressGoal != null) ...[
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: onPressGoal,
-                  icon: const Icon(Icons.track_changes, size: 20),
-                  label: Text(
-                    'เป้าหมาย',
-                    style: TextStyle(
-                      fontSize: buttonFont,
-                      fontWeight: FontWeight.w800,
+                // Goal button (optional)
+                if (onPressGoal != null) ...[
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: onPressGoal,
+                    icon: const Icon(Icons.track_changes, size: 20),
+                    label: Text(
+                      'เป้าหมาย',
+                      style: TextStyle(
+                        fontSize: buttonFont,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    // CHANGED: theme-aware button on header
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: dp.card,
+                      foregroundColor: dp.text,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 14 : 10,
+                        vertical: isTablet ? 10 : 6,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kWhite,
-                    foregroundColor: kPrimary,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isTablet ? 14 : 10,
-                      vertical: isTablet ? 10 : 6,
+                ],
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Progress + counter
+            Row(
+              children: [
+                // Animated progress bar
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: progress),
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) {
+                        return LinearProgressIndicator(
+                          value: value,
+                          minHeight: 12,
+                          backgroundColor: kWhite.withOpacity(0.28),
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(kWhite),
+                        );
+                      },
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Counter chip
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: kWhite.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: kWhite.withOpacity(0.28)),
+                  ),
+                  child: Text(
+                    '$savedDays/$totalDays วัน',
+                    style: TextStyle(
+                      color: kWhite,
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
               ],
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Progress + counter
-          Row(
-            children: [
-              // Animated progress bar
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: progress),
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, _) {
-                      return LinearProgressIndicator(
-                        value: value,
-                        minHeight: 12,
-                        backgroundColor: kWhite.withOpacity(0.28),
-                        valueColor:
-                            const AlwaysStoppedAnimation<Color>(kWhite),
-                      );
-                    },
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // Counter chip
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: kWhite.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: kWhite.withOpacity(0.28)),
-                ),
-                child: Text(
-                  '$savedDays/$totalDays วัน',
-                  style: TextStyle(
-                    color: kWhite,
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // --- Added: small stat card ---
   Widget _buildStatCard({
@@ -844,15 +870,16 @@ class _DashboardState extends State<Dashboard> {
     required String value,
     String? subtitle,
   }) {
+    final dp = _DBTheme(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: kWhite,
+        color: dp.card, // CHANGED
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: kMint.withOpacity(0.25), width: 1),
+        border: Border.all(color: dp.border, width: 1), // CHANGED
         boxShadow: [
           BoxShadow(
-            color: kMint.withOpacity(0.15),
+            color: dp.shadow, // CHANGED
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -861,7 +888,6 @@ class _DashboardState extends State<Dashboard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Icon box
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -871,8 +897,6 @@ class _DashboardState extends State<Dashboard> {
             child: Icon(icon, color: color, size: 30),
           ),
           const SizedBox(width: 12),
-
-          // Title on the left, slightly lowered to align with right value
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 2),
@@ -880,16 +904,14 @@ class _DashboardState extends State<Dashboard> {
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
-                  color: kPrimary,
+                  color: dp.text, // CHANGED
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
-
-          // Value + subtitle on the right
           Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -897,10 +919,10 @@ class _DashboardState extends State<Dashboard> {
               Text(
                 value,
                 textAlign: TextAlign.right,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: kPrimary,
+                  color: dp.text, // CHANGED
                 ),
               ),
               if (subtitle != null) ...[
@@ -910,7 +932,7 @@ class _DashboardState extends State<Dashboard> {
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: dp.text.withOpacity(0.7), // CHANGED
                   ),
                 ),
               ],
@@ -1015,6 +1037,7 @@ class _DashboardState extends State<Dashboard> {
 
   // --- Reused: goal vs today section (title styled) ---
   Widget _buildGoalVsTodaySection(bool isTablet) {
+    final dp = _DBTheme(context);
     final showGoalHint = !_hasActiveGoals ||
         (_goalWaterIntake == null &&
             _goalSleepHours == null &&
@@ -1098,15 +1121,15 @@ class _DashboardState extends State<Dashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
-            Icon(Icons.flag, color: kMint),
-            SizedBox(width: 8),
+          children: [
+            Icon(Icons.flag, color: dp.primary), // CHANGED
+            const SizedBox(width: 8),
             Text(
               'ความก้าวหน้าวันนี้เทียบกับเป้าหมาย',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: kPrimary,
+                color: dp.text, // CHANGED
               ),
             ),
           ],
@@ -1124,10 +1147,10 @@ class _DashboardState extends State<Dashboard> {
               children: [
                 const Icon(Icons.info, color: Colors.orange),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'ยังไม่ได้ตั้งเป้าหมาย หรือไม่มีข้อมูลเป้าหมายที่เกี่ยวข้อง',
-                    style: TextStyle(fontSize: 12, color: kPrimary),
+                    style: TextStyle(fontSize: 12, color: dp.text), // CHANGED
                   ),
                 ),
                 TextButton(
@@ -1155,14 +1178,15 @@ class _DashboardState extends State<Dashboard> {
 
   // --- Added: quick actions redesigned ---
   Widget _buildQuickActions(bool isTablet) {
+    final dp = _DBTheme(context);
     final btnStyle = ElevatedButton.styleFrom(
-      backgroundColor: kWhite,
-      foregroundColor: kPrimary,
+      backgroundColor: dp.card, // CHANGED
+      foregroundColor: dp.text, // CHANGED
       elevation: 0,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      minimumSize: Size(0, isTablet ? 52 : 46), // ensure consistent height
+      minimumSize: Size(0, isTablet ? 52 : 46),
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: kTeal.withOpacity(0.7), width: 2),
+        side: BorderSide(color: dp.primary.withOpacity(0.7), width: 2), // CHANGED
         borderRadius: BorderRadius.circular(12),
       ),
     );
@@ -1174,16 +1198,16 @@ class _DashboardState extends State<Dashboard> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: kTeal, size: isTablet ? 30 : 26),
+            Icon(icon, color: dp.primary, size: isTablet ? 30 : 26), // CHANGED
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                label,               
+                label,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: kPrimary,
+                  color: dp.text, // CHANGED
                   fontSize: isTablet ? 16 : 14,
                 ),
               ),
@@ -1203,7 +1227,7 @@ class _DashboardState extends State<Dashboard> {
       ],
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -1312,7 +1336,8 @@ class _DashboardState extends State<Dashboard> {
         .toString();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
+      // CHANGED: use themed background instead of fixed light color
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         color: kMint,
         onRefresh: refreshAllData,
@@ -2215,7 +2240,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.7),
                             borderRadius: BorderRadius.circular(8),
-                                                   ),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [

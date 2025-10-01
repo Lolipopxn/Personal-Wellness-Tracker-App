@@ -60,6 +60,7 @@ void main() async {
   //await NotificationService().debugStatus();
   if (await notificationService.isEnabled()) {
     await notificationService.scheduleDailyMorningNotification(hour: 8, minute: 0);
+    // await notificationService.showNowTest();
   } else {
     await notificationService.cancelDaily();
   }
@@ -105,6 +106,10 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.grey[900], // Dark background
             brightness: Brightness.dark, // Dark theme
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF79D7BE),
+              brightness: Brightness.dark,
+            ), // NEW: provide colorScheme primary for dark mode components used in DailyPage
 
             appBarTheme: AppBarTheme(
               foregroundColor: Colors.white,
