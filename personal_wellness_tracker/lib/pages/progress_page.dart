@@ -26,7 +26,7 @@ class ProgressScreen extends StatefulWidget {
 
 class _ProgressScreenState extends State<ProgressScreen> {
   int _doneCount = 0;
-  final int _totalTasks = 5;
+  final int _totalTasks = 5; // ✅ ตอนนี้เหลือ 5 เป้าหมาย
   final DataExportService _exportService = DataExportService();
 
   Map<int, int> _weeklyWater = {};
@@ -65,32 +65,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
         final meals = await _apiService.getMealsByFoodLog(foodLog['id']);
 
         int totalCalories = 0;
-        Set<String> mealTypes = {};
 
         for (final meal in meals) {
           totalCalories += (meal['calories'] ?? 0) as int;
-          final mealType = meal['meal_type'];
-          if (mealType != null) {
-            mealTypes.add(mealType);
-          }
         }
 
-        int mainMealsCount = 0;
-        if (mealTypes.contains('breakfast')) mainMealsCount++;
-        if (mealTypes.contains('lunch')) mainMealsCount++;
-        if (mealTypes.contains('dinner')) mainMealsCount++;
-
-        return {
-          'calories': totalCalories.toDouble(),
-          'mainMealsCount': mainMealsCount,
-          'hasThreeMeals': mainMealsCount >= 3,
-        };
+        return {'calories': totalCalories.toDouble()};
       }
     } catch (e) {
       debugPrint('Error getting food data for date $date: $e');
     }
 
-    return {'calories': 0.0, 'mainMealsCount': 0, 'hasThreeMeals': false};
+    return {'calories': 0.0};
   }
 
   Future<void> _loadUserGoals() async {
@@ -122,7 +108,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
       _currentDayOfWeek = _getDayIndex(today);
 
       int todayDoneCount = 0;
-      bool todayHasThreeMeals = false;
 
       for (int i = 0; i <= _currentDayOfWeek; i++) {
         final date = monday.add(Duration(days: i));
@@ -175,24 +160,30 @@ class _ProgressScreenState extends State<ProgressScreen> {
             if (sleep > 0) _weeklySleep[i] = sleep;
 
             if (i == _currentDayOfWeek) {
-              if (water >= (_userGoals?['goal_water_intake'] ?? 8))
+              if (water >= (_userGoals?['goal_water_intake'] ?? 8)) {
                 todayDoneCount++;
-              if (exercise >= (_userGoals?['goal_exercise_minutes'] ?? 30))
+                debugPrint("✅ water goal done ($water)");
+              }
+              if (exercise >= (_userGoals?['goal_exercise_minutes'] ?? 30)) {
                 todayDoneCount++;
-              if (sleep >= (_userGoals?['goal_sleep_hours'] ?? 6))
+                debugPrint("✅ exercise goal done ($exercise)");
+              }
+              if (sleep >= (_userGoals?['goal_sleep_hours'] ?? 6)) {
                 todayDoneCount++;
-              if (doneMood) todayDoneCount++;
-              todayHasThreeMeals = foodData['hasThreeMeals'] as bool;
-              if (todayHasThreeMeals) todayDoneCount++;
+                debugPrint("✅ sleep goal done ($sleep)");
+              }
+              if (doneMood) {
+                todayDoneCount++;
+                debugPrint("✅ mood logged");
+              }
+              final calories = foodData['calories'] as double;
+              if (calories >= (_userGoals?['goal_calorie_intake'] ?? 2000)) {
+                todayDoneCount++;
+                debugPrint("✅ calorie goal done ($calories)");
+              }
             }
           }
-        } else {
-          if (i == _currentDayOfWeek) {
-            todayHasThreeMeals = foodData['hasThreeMeals'] as bool;
-            if (todayHasThreeMeals) todayDoneCount++;
-          }
         }
-
         final calories = foodData['calories'] as double;
         if (calories > 0) {
           _weeklyCalories[i] = calories;
@@ -201,6 +192,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
       setState(() {
         _doneCount = todayDoneCount;
+        debugPrint("📊 Today Done Count: $_doneCount / $_totalTasks");
       });
     } catch (e) {
       debugPrint('Load weekly data error: $e');
@@ -290,6 +282,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
                         final goals = snapshot.data!;
+                        debugPrint("📊 Today goals status: $goals");
+
                         final now = DateTime.now();
                         final weekdayNames = [
                           'จันทร์',
@@ -382,6 +376,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               isCompleted: goals['sleep'] as bool,
                               currentValue:
                                   '${goals['sleepHours'].toStringAsFixed(1)}/${_userGoals?['goal_sleep_hours'] ?? 6} ชม.',
+                            ),
+                            _buildGoalItem(
+                              icon: Icons.sentiment_satisfied,
+                              title: 'บันทึกอารมณ์',
+                              isCompleted: goals['mood'] as bool,
+                              currentValue: goals['mood']
+                                  ? 'สำเร็จ'
+                                  : 'ยังไม่บันทึก',
                             ),
                             _buildGoalItem(
                               icon: Icons.restaurant,
@@ -560,7 +562,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
       final foodData = await _getFoodDataForDate(today);
 
-      return {
+      final result = {
         'water': water >= (_userGoals?['goal_water_intake'] ?? 8),
         'waterCount': water,
         'exercise': exercise >= (_userGoals?['goal_exercise_minutes'] ?? 30),
@@ -568,10 +570,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
         'sleep': sleep >= (_userGoals?['goal_sleep_hours'] ?? 6),
         'sleepHours': sleep,
         'mood': mood,
-        'threeMeals': foodData['hasThreeMeals'] as bool,
-        'mealsCount': foodData['mainMealsCount'] as int,
         'calories': foodData['calories'],
       };
+
+      debugPrint("📊 Today goals status: $result");
+      return result;
     } catch (e) {
       debugPrint('Error getting today goals status: $e');
       return {
@@ -582,8 +585,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
         'sleep': false,
         'sleepHours': 0.0,
         'mood': false,
-        'threeMeals': false,
-        'mealsCount': 0,
         'calories': 0.0,
       };
     }
@@ -697,7 +698,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  // ✅ Line Chart capped
   Widget _buildLineChart(Map<int, double> data, Color color, double maxY) {
     List<FlSpot> spots = [];
     data.forEach((dayIndex, value) {
