@@ -30,7 +30,7 @@ class _DashboardState extends State<Dashboard> {
   int? _goalWaterIntake;                 // glasses/day
   double? _goalSleepHours;               // hours/day
   int? _goalExerciseMinutesPerDay;       // minutes/day
-  int? _goalExerciseFrequencyWeek;       // times/week (info)
+  // int? _goalExerciseFrequencyWeek;       
   int? _goalCaloriesPerDay;              // kcal/day (info)
 
   // --- Added: palette ---
@@ -170,7 +170,7 @@ class _DashboardState extends State<Dashboard> {
             _goalWaterIntake = (goals?['goal_water_intake'] as num?)?.toInt();
             _goalSleepHours = (goals?['goal_sleep_hours'] as num?)?.toDouble();
             _goalExerciseMinutesPerDay = (goals?['goal_exercise_minutes'] as num?)?.toInt();
-            _goalExerciseFrequencyWeek = (goals?['goal_exercise_frequency_week'] as num?)?.toInt();
+            // _goalExerciseFrequencyWeek = (goals?['goal_exercise_frequency_week'] as num?)?.toInt();
             _goalCaloriesPerDay = (goals?['goal_calories'] as num?)?.toInt() 
                                   ?? (goals?['goal_calorie_intake'] as num?)?.toInt();
 
@@ -859,36 +859,62 @@ class _DashboardState extends State<Dashboard> {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Icon box
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 30),
           ),
           const SizedBox(width: 12),
+
+          // Title on the left, slightly lowered to align with right value
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 12, color: kPrimary, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w800, color: kPrimary)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: kPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
+          ),
+
+          // Value + subtitle on the right
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: kPrimary,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -926,9 +952,66 @@ class _DashboardState extends State<Dashboard> {
           value: _goalCaloriesPerDay?.toString() ?? '-',
           subtitle: 'kcal/วัน',
         ),
+        // --- Added: Mood card ---
+        _buildStatCard(
+          icon: _moodIcon(mood),
+          color: _moodColor(mood),
+          title: 'อารมณ์',
+          value: (mood.isEmpty ? 'N/A' : _moodText(mood)),
+          subtitle:  null,
+        ),
       ],
     );
   }
+
+  // --- Added: mood helpers for icon/color mapping ---
+  IconData _moodIcon(String value) {
+    final m = value.toLowerCase();
+    if (m.contains('😄')) {
+      return Icons.mood;
+    } else if (m.contains('🙂')) {
+      return Icons.mood;
+    } else if (m.contains('😐')) {
+      return Icons.sentiment_neutral;
+    } else if (m.contains('🙁')) {
+      return Icons.sentiment_dissatisfied;
+    } else if (m.contains('😫')) {
+      return Icons.mood_bad;
+    }
+    return Icons.emoji_emotions;
+  }
+
+  Color _moodColor(String value) {
+    final m = value.toLowerCase();
+    if (m.contains('😄')) {
+      return Colors.green;
+    } else if (m.contains('🙂')) {
+      return Colors.lightGreen;
+    } else if (m.contains('😐')) {
+      return Colors.amber;
+    } else if (m.contains('🙁')) {
+      return Colors.orange;
+    } else if (m.contains('😫')) {
+      return Colors.redAccent;
+    }
+    return Colors.purple;
+  }
+
+  String _moodText(String value) {
+  final m = value.toLowerCase();
+  if (m.contains('😄')) {
+    return 'มีความสุข';
+  } else if (m.contains('🙂')) {
+    return 'ดี';
+  } else if (m.contains('😐')) {
+    return 'เฉย ๆ';
+  } else if (m.contains('🙁')) {
+    return 'ไม่ค่อยดี';
+  } else if (m.contains('😫')) {
+    return 'เครียด/เหนื่อย';
+  }
+  return 'ไม่ระบุอารมณ์';
+}
 
   // --- Reused: goal vs today section (title styled) ---
   Widget _buildGoalVsTodaySection(bool isTablet) {
@@ -1063,23 +1146,6 @@ class _DashboardState extends State<Dashboard> {
                 tiles[i],
                 if (i != tiles.length - 1) const SizedBox(height: 10),
               ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.mood, size: 18, color: Colors.purple),
-              const SizedBox(width: 6),
-              Text(
-                'อารมณ์วันนี้: $mood',
-                style: const TextStyle(fontSize: 12, color: Colors.purple),
-              ),
-              const Spacer(),
-              if (_goalExerciseFrequencyWeek != null)
-                Text(
-                  'ความถี่/สัปดาห์: $_goalExerciseFrequencyWeek',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                ),
             ],
           ),
         ],
@@ -1367,9 +1433,6 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
   ];
 
 
-  
-
-
   double get tdee {
     if (selectedExerciseFrequency == null) return 0;
     return widget.bmr * _getMultiplierForFrequency(selectedExerciseFrequency!);
@@ -1531,9 +1594,9 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
       Map<String, dynamic> currentUser;
       try {
         currentUser = await widget.apiService.getCurrentUser();
-        print('DEBUG: Current user data: $currentUser');
+        // print('DEBUG: Current user data: $currentUser');
       } catch (e) {
-        print('DEBUG: Failed to get current user: $e');
+        // print('DEBUG: Failed to get current user: $e');
         throw Exception('ไม่สามารถตรวจสอบข้อมูลผู้ใช้ได้ กรุณาเข้าสู่ระบบใหม่');
       }
       
@@ -1541,10 +1604,10 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                            currentUser['id']?.toString() ?? 
                            currentUser['user_id']?.toString() ?? '';
 
-      print('DEBUG: Extracted user ID: "$userId"');
+      // print('DEBUG: Extracted user ID: "$userId"');
       
       if (userId.isEmpty) {
-        print('DEBUG: User data keys: ${currentUser.keys.toList()}');
+        // print('DEBUG: User data keys: ${currentUser.keys.toList()}');
         throw Exception('ไม่พบ ID ผู้ใช้ในข้อมูล กรุณาเข้าสู่ระบบใหม่');
       }
 
@@ -1552,14 +1615,14 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
       final exerciseFreq = selectedExerciseFrequency ?? 0;
       final exerciseMinutesPerDay = targetExerciseMinutesPerDay ?? 30;
       
-      print('DEBUG: =================');
-      print('DEBUG: selectedExerciseFrequency = $selectedExerciseFrequency');
-      print('DEBUG: selectedExerciseFrequency type = ${selectedExerciseFrequency.runtimeType}');
-      print('DEBUG: exerciseFreq = $exerciseFreq');
-      print('DEBUG: exerciseFreq type = ${exerciseFreq.runtimeType}');
-      print('DEBUG: exerciseMinutesPerDay = $exerciseMinutesPerDay');
-      print('DEBUG: tdeeMultiplier = ${_getMultiplierForFrequency(exerciseFreq)}');
-      print('DEBUG: =================');
+      // print('DEBUG: =================');
+      // print('DEBUG: selectedExerciseFrequency = $selectedExerciseFrequency');
+      // print('DEBUG: selectedExerciseFrequency type = ${selectedExerciseFrequency.runtimeType}');
+      // print('DEBUG: exerciseFreq = $exerciseFreq');
+      // print('DEBUG: exerciseFreq type = ${exerciseFreq.runtimeType}');
+      // print('DEBUG: exerciseMinutesPerDay = $exerciseMinutesPerDay');
+      // print('DEBUG: tdeeMultiplier = ${_getMultiplierForFrequency(exerciseFreq)}');
+      // print('DEBUG: =================');
 
       // Create comprehensive goal data
       final goalData = {
@@ -1573,17 +1636,17 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
         'goal_timeframe': selectedTimeframe,
       };
 
-      print('DEBUG: =================');
-      print('DEBUG: Sending goal data: $goalData');
-      print('DEBUG: goal_exercise_frequency_week value: ${goalData['goal_exercise_frequency_week']}');
-      print('DEBUG: goal_exercise_frequency_week type: ${goalData['goal_exercise_frequency_week'].runtimeType}');
-      print('DEBUG: User ID: $userId');
-      print('DEBUG: Goal calories: ${targetCalories.round()}');
-      print('DEBUG: =================');
+      // print('DEBUG: =================');
+      // print('DEBUG: Sending goal data: $goalData');
+      // print('DEBUG: goal_exercise_frequency_week value: ${goalData['goal_exercise_frequency_week']}');
+      // print('DEBUG: goal_exercise_frequency_week type: ${goalData['goal_exercise_frequency_week'].runtimeType}');
+      // print('DEBUG: User ID: $userId');
+      // print('DEBUG: Goal calories: ${targetCalories.round()}');
+      // print('DEBUG: =================');
 
       // Save or update goals
       final result = await _saveOrUpdateGoals(userId, goalData);
-      print('DEBUG: Final API response: $result');
+      // print('DEBUG: Final API response: $result');
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -1637,17 +1700,17 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
     try {
       // Always check if user already has goals first
       final existingGoals = await widget.apiService.getUserGoals(userId);
-      print('DEBUG: Existing goals check: $existingGoals');
+      // print('DEBUG: Existing goals check: $existingGoals');
       
       if (existingGoals != null && existingGoals.isNotEmpty) {
         // User has existing goals - ALWAYS UPDATE (never create new)
-        print('DEBUG: User has existing goals - updating...');
-        print('DEBUG: Existing goal ID: ${existingGoals["id"] ?? "unknown"}');
+        // print('DEBUG: User has existing goals - updating...');
+        // print('DEBUG: Existing goal ID: ${existingGoals["id"] ?? "unknown"}');
         final result = await widget.apiService.updateUserGoals(
           userId: userId,
           goals: goalData,
         );
-        print('DEBUG: Goals updated successfully: $result');
+        // print('DEBUG: Goals updated successfully: $result');
         result['_operation'] = 'update';
         result['_message'] = 'อัปเดตเป้าหมายสำเร็จ';
         return result;
@@ -1658,7 +1721,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
           userId: userId,
           goals: goalData,
         );
-        print('DEBUG: First goal created successfully: $result');
+        // print('DEBUG: First goal created successfully: $result');
         result['_operation'] = 'create';
         result['_message'] = 'สร้างเป้าหมายสำเร็จ';
         return result;
@@ -1730,6 +1793,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Column(
         children: [
@@ -1747,7 +1811,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                 'ขั้นที่ ${currentStep + 1}/5', // ลดจาก 6 เป็น 5
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: const Color.fromARGB(255, 0, 0, 0),
                 ),
               ),
             ],
@@ -1879,7 +1943,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           '${targetExerciseMinutesPerDay ?? 30} นาทีต่อวัน',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF79D7BE),
+                            color: Color(0xFF2E5077),
                             fontSize: 14,
                           ),
                         ),
@@ -2071,7 +2135,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     hintText: 'กรอกน้ำหนักเป้าหมาย',
                     suffixText: 'กก.',
@@ -2151,7 +2215,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.7),
                             borderRadius: BorderRadius.circular(8),
-                          ),
+                                                   ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -2345,7 +2409,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           '${targetWaterIntake ?? 8} แก้วต่อวัน',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF79D7BE),
+                            color: Color(0xFF2E5077),
                             fontSize: 14,
                           ),
                         ),
@@ -2411,7 +2475,7 @@ class _TDEECalculatorDialogState extends State<_TDEECalculatorDialog> {
                           '${targetSleepHours ?? 8} ชม.',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF79D7BE),
+                            color: Color(0xFF2E5077),
                             fontSize: 14,
                           ),
                         ),
