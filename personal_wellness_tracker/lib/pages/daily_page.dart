@@ -980,8 +980,8 @@ class _DailyPageState extends State<DailyPage> {
                               ? Icons.pause_circle
                               : Icons.play_circle,
                           label: _exerciseStopwatchOn
-                              ? 'หยุดจับเวลา'
-                              : 'เริ่มจับเวลา',
+                              ? 'หยุดออกกำลังกาย'
+                              : 'เริ่มออกกำลังกาย',
                           onTap: _toggleExerciseTimer,
                         ),
                         _QuickAction(
