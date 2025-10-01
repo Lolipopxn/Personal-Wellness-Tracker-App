@@ -1346,15 +1346,6 @@ class _FoodSavePageState extends State<FoodSavePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(20), // ลดขนาดจาก 56 เป็น 50
-        child: AppBar(
-          backgroundColor: const Color(0xFF79D7BE),
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
-          toolbarHeight: 20, // กำหนดความสูงของ toolbar
-        ),
-      ),
       body: Column(
         children: [
           // Header Section with Title and Add Button
