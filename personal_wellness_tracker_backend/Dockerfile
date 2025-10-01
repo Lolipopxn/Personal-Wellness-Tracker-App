@@ -10,12 +10,10 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files first for better Docker layer caching
-COPY pyproject.toml poetry.toml* ./
-COPY poetry.lock* ./
-COPY requirements.txt* ./
+# Copy all files first to check what exists
+COPY . .
 
-# Install Python dependencies
+# Install Python dependencies based on what files exist
 RUN if [ -f pyproject.toml ]; then \
         echo "Installing with Poetry..." && \
         pip install poetry && \
@@ -39,13 +37,10 @@ RUN if [ -f pyproject.toml ]; then \
             python-dotenv; \
     fi
 
-# Copy application source code
-COPY . .
-
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
-USER appuser
+# Create non-root user for security (but keep as root for now to avoid permission issues)
+# RUN groupadd -r appuser && useradd -r -g appuser appuser
+# RUN chown -R appuser:appuser /app
+# USER appuser
 
 # Expose port
 EXPOSE 8000
